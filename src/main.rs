@@ -25,20 +25,20 @@ fn main() {
 
     let k = Scalar::random(&mut blinding_rng);
     let d = Scalar::random(&mut blinding_rng);
-    let mut total_proving = Duration::new(0, 0);
 
     let seed = rand::thread_rng().gen::<[u8; 32]>();
     let seed_rs = Scalar::from_bytes_mod_order(seed);
 
     let (q, y, y_inv, z) = prog(seed_rs, k, d, &constants);
 
-        let bp_gens = BulletproofGens::new(4096, 1);
+    let bp_gens = BulletproofGens::new(4096, 1);
 
+    let mut total_proving = Duration::new(0, 0);
     let now = Instant::now();
 
     println!(
         "{:#?}",
-        proof_gadget_roundtrip_helper(bp_gens,d, k, y, y_inv, q, z, seed_rs, constants)
+        proof_gadget_roundtrip_helper(bp_gens, d, k, y, y_inv, q, z, seed_rs, constants)
     );
 
     let elapsed = now.elapsed();
@@ -103,10 +103,10 @@ fn mimc_hash(left: &Scalar, right: &Scalar, constants: &[Scalar]) -> Scalar {
 
         // (xl + C[i])^3
         let mut xl_c3 = xl_c * xl_c * xl_c;
-        
-         // (xl + C[i])^3 + xr
+
+        // (xl + C[i])^3 + xr
         xl_c3 = xl_c3 + xr;
-        
+
         xr = xl;
         xl = xl_c3;
     }
@@ -120,14 +120,12 @@ fn mimc_gadget<CS: ConstraintSystem>(
     right: LinearCombination,
     constants: [Scalar; MIMC_ROUNDS],
 ) -> LinearCombination {
-
     assert_eq!(MIMC_ROUNDS, constants.len());
 
     let mut xl = left.clone();
     let mut xr = right.clone();
 
     for i in 0..MIMC_ROUNDS {
-
         // (xl+Ci)^2
         let (tmp, _, tmp_sq) = cs.multiply(xl.clone() + constants[i], xl.clone() + constants[i]);
 
@@ -176,7 +174,6 @@ fn proof_gadget_roundtrip_helper(
 ) -> Result<(), R1CSError> {
     // Common
     let pc_gens = PedersenGens::default();
-
 
     // Prover's scope
     let (proof, commitments) = {
