@@ -16,7 +16,7 @@ use std::time::{Duration, Instant};
 use bulletproofs::r1cs::{ConstraintSystem, LinearCombination, R1CSError};
 use curve25519_dalek::scalar::Scalar;
 
-const MIMC_ROUNDS: usize = 322;
+const MIMC_ROUNDS: usize = 90;
 
 fn main() {
     let mut blinding_rng = rand::thread_rng();
@@ -95,22 +95,17 @@ fn proof_gadget<CS: ConstraintSystem>(
 fn mimc_hash(left: &Scalar, right: &Scalar, constants: &[Scalar]) -> Scalar {
     assert_eq!(constants.len(), MIMC_ROUNDS);
 
-    let mut xl = left.clone();
-    let mut xr = right.clone();
+    let mut x = left.clone();
+    let key = right.clone();
 
     for i in 0..MIMC_ROUNDS {
-        let mut xl_c = xl + constants[i];
-
-        // (xl + C[i])^3
-        let mut xl_c3 = xl_c * xl_c * xl_c;
-
-        // (xl + C[i])^3 + xr
-        xl_c3 = xl_c3 + xr;
-
-        xr = xl;
-        xl = xl_c3;
+        let a: Scalar = x + key + constants[i];
+        let a_2 = a * a;
+        let a_3 = a_2 * a;
+        let a_4 = a_2 * a_2;
+        x = a_3 * a_4;
     }
-    xl
+    x + key
 }
 
 // N.B. the constrain on the image has been removed, as we will not know the intermediate images
@@ -122,25 +117,30 @@ fn mimc_gadget<CS: ConstraintSystem>(
 ) -> LinearCombination {
     assert_eq!(MIMC_ROUNDS, constants.len());
 
-    let mut xl = left.clone();
-    let mut xr = right.clone();
+    let mut x = left.clone();
+    let mut key = right.clone();
 
     for i in 0..MIMC_ROUNDS {
-        // (xl+Ci)^2
-        let (tmp, _, tmp_sq) = cs.multiply(xl.clone() + constants[i], xl.clone() + constants[i]);
 
-        // (xl+Ci)^3
-        let (_, _, tmp_cu) = cs.multiply(tmp_sq.clone().into(), tmp.clone().into());
+        // x + k + c[i]
+        let a = x + key.clone() + constants[i];
 
-        let new_xl = tmp_cu + xr.clone();
-        cs.constrain(new_xl.clone() - tmp_cu - xr.clone());
+        // (a)^2
+        let (_, _, a_2) = cs.multiply(a.clone(), a.clone());
 
-        xr = xl;
+        // (a)^3
+        let (_, _, a_3) = cs.multiply(a_2.clone().into(), a.clone().into());
 
-        xl = new_xl;
+        // (a)^4
+        let (_, _, a_4) = cs.multiply(a_2.clone().into(), a_2.clone().into());
+
+        // (a)^7
+        let (_, _, a_7) = cs.multiply(a_4.into(), a_3.into());
+
+        x = a_7.into();
     }
 
-    xl
+    x + key
 }
 
 fn score_gadget<CS: ConstraintSystem>(
