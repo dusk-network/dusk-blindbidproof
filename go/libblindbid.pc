@@ -1,0 +1,4 @@
+Name: blindbid
+Version: 7c7d729fcee560449bddb146ae87917373595087
+Description: blindbid library library
+Libs: -lSystem -lresolv -lc -lm
