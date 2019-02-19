@@ -15,7 +15,7 @@ use crate::gadgets::*;
 use bulletproofs::r1cs::{ConstraintSystem, LinearCombination, R1CSError, R1CSProof, Variable};
 use curve25519_dalek::scalar::Scalar;
 
-fn prog(
+pub fn prog(
     seed: Scalar,
     k: Scalar,
     d: Scalar,
@@ -51,7 +51,7 @@ fn mimc_hash(left: &Scalar, right: &Scalar, constants: &[Scalar]) -> Scalar {
     x + key
 }
 
-fn prove(
+pub fn prove(
     d: Scalar,
     k: Scalar,
     y: Scalar,
@@ -116,7 +116,7 @@ fn prove(
     Ok((proof, commitments, t_c))
 }
 
-fn verify(
+pub fn verify(
     proof: R1CSProof,
     commitments: Vec<CompressedRistretto>,
     t_c: Vec<CompressedRistretto>,

@@ -419,6 +419,7 @@ dependencies = [
  "bulletproofs 1.0.1 (git+https://github.com/dalek-cryptography/bulletproofs?branch=develop)",
  "curve25519-dalek 1.0.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "failure 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libc 0.2.48 (registry+https://github.com/rust-lang/crates.io-index)",
  "merlin 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand 0.6.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "subtle 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
