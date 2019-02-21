@@ -13,8 +13,8 @@ curve25519-dalek = { version = "1.0.1", features = ["serde"] }
 libc = "0.2"
 
 [dependencies.bulletproofs]
-git = "https://github.com/dalek-cryptography/bulletproofs"
-branch = "develop"
+git = "https://gitlab.dusk.network/kev/bp"
+branch = "master"
 features = ["yoloproofs"]
 
 [lib]
