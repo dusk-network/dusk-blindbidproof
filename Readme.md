@@ -1,6 +1,14 @@
-## How to
+## How to build the library
 
-- make clean
-- make build
-- cd go
-- go run main.go
+    $ cargo build --release
+
+## How to run go example
+
+    $ cd go
+    $ go run main.go
+
+It's possible also build the rust lib from `./go` folder, so it's not needed change current directory for every code change:
+
+    $ cd go
+    $ cargo build --release
+    $ go run main.go

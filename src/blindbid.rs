@@ -1,4 +1,3 @@
-#![feature(test)]
 extern crate bulletproofs;
 extern crate core;
 extern crate curve25519_dalek;
@@ -14,6 +13,36 @@ use rand::{thread_rng, Rng};
 use crate::gadgets::*;
 use bulletproofs::r1cs::{ConstraintSystem, LinearCombination, R1CSError, R1CSProof, Variable};
 use curve25519_dalek::scalar::Scalar;
+
+fn slice_to_scalar(slice: &[u8]) -> Scalar {
+    let mut raw_digest: [u8; 32] = [0; 32];
+    raw_digest.copy_from_slice(&slice);
+    Scalar::from_bytes_mod_order(raw_digest)
+}
+
+pub fn prover(
+    d_u8: [u8; 32],
+    k_u8: [u8; 32],
+    y_u8: [u8; 32],
+    y_inv_u8: [u8; 32],
+    q_u8: [u8; 32],
+    z_img_u8: [u8; 32],
+    seed_u8: [u8; 32],
+    pub_list_u8: Vec<u8>,
+) {
+    let d = Scalar::from_bytes_mod_order(d_u8);
+    let k = Scalar::from_bytes_mod_order(k_u8);
+    let y = Scalar::from_bytes_mod_order(y_u8);
+    let y_inv = Scalar::from_bytes_mod_order(y_inv_u8);
+    let q = Scalar::from_bytes_mod_order(q_u8);
+    let z_img = Scalar::from_bytes_mod_order(z_img_u8);
+    let seed = Scalar::from_bytes_mod_order(seed_u8);
+
+    let pub_list: Vec<Scalar> = pub_list_u8.chunks(32).map(slice_to_scalar).collect();
+
+    println!("d {:?}", d);
+    println!("pub_list: {:?}", pub_list);
+}
 
 pub fn prog(
     seed: Scalar,
