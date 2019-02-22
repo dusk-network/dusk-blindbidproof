@@ -1,7 +1,6 @@
 package main
 
-// #cgo LDFLAGS: libblindbid.dylib
-// #cgo pkg-config: ./libblindbid.pc
+// #cgo LDFLAGS: -L../target/release -lblindbid
 // #include "./libblindbid.h"
 import "C"
 import (
@@ -34,6 +33,7 @@ func main() {
 
 	pubListPtr := sliceToPtr(pubList)
 	cPubListLen := C.size_t(len(pubList))
+
 	C.prover(dPtr, kPtr, yPtr, yInvPtr, qPtr, zImgPtr, seedPtr, pubListPtr, cPubListLen)
 }
 
