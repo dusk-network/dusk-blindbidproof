@@ -1,19 +1,11 @@
-#![feature(test)]
 extern crate bulletproofs;
 extern crate core;
 extern crate curve25519_dalek;
 extern crate merlin;
 extern crate rand;
 extern crate subtle;
-use bulletproofs::r1cs::{Prover, Verifier};
-use bulletproofs::{BulletproofGens, PedersenGens};
-use curve25519_dalek::ristretto::CompressedRistretto;
-use merlin::Transcript;
-use rand::{thread_rng, Rng};
 
-use std::time::{Duration, Instant};
-
-use bulletproofs::r1cs::{ConstraintSystem, LinearCombination, R1CSError, R1CSProof, Variable};
+use bulletproofs::r1cs::{ConstraintSystem, LinearCombination, Variable};
 use curve25519_dalek::scalar::Scalar;
 
 pub const MIMC_ROUNDS: usize = 90;
@@ -22,7 +14,6 @@ pub fn proof_gadget<CS: ConstraintSystem>(
     cs: &mut CS,
     d: LinearCombination,
     k: LinearCombination,
-    y: LinearCombination,
     y_inv: LinearCombination,
     q: LinearCombination,
     z_img: LinearCombination,
@@ -32,7 +23,7 @@ pub fn proof_gadget<CS: ConstraintSystem>(
     items: Vec<LinearCombination>, // public list
 ) {
     // Prove z
-    let m = mimc_gadget(cs, k, Scalar::from(0 as u8).into(), constants);
+    let m = mimc_gadget(cs, k, Scalar::zero().into(), constants);
 
     let x = mimc_gadget(cs, d.clone(), m.clone(), constants);
 
@@ -58,7 +49,7 @@ fn mimc_gadget<CS: ConstraintSystem>(
     assert_eq!(MIMC_ROUNDS, constants.len());
 
     let mut x = left.clone();
-    let mut key = right.clone();
+    let key = right.clone();
 
     for i in 0..MIMC_ROUNDS {
         // x + k + c[i]
@@ -89,7 +80,7 @@ fn score_gadget<CS: ConstraintSystem>(
     y_inv: LinearCombination,
     q: LinearCombination,
 ) {
-    let one = Scalar::from(1 as u8);
+    let one = Scalar::one();
 
     // check that Yinv * Y = 1
     let (_, _, one_var) = cs.multiply(y, y_inv.clone());
@@ -133,7 +124,7 @@ fn one_of_many_gadget<CS: ConstraintSystem>(
 
         cs.constrain(prev_toggle_sum + (curr_toggle) - (curr_toggle_sum));
     }
-    let one: Scalar = Scalar::from(1 as u8);
+    let one: Scalar = Scalar::one();
     let last_item = toggle_sum[toggle_len - 1].clone();
     cs.constrain(last_item - one);
 
@@ -149,7 +140,7 @@ fn one_of_many_gadget<CS: ConstraintSystem>(
 fn boolean_gadget<CS: ConstraintSystem>(cs: &mut CS, a1: LinearCombination) {
     // a *(1-a) = 0
     let a = a1.clone();
-    let one: LinearCombination = Scalar::from(1 as u8).into();
+    let one: LinearCombination = Scalar::one().into();
     let (_, _, c_var) = cs.multiply(a, one - a1);
     cs.constrain(c_var.into());
 }

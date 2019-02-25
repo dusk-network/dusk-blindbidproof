@@ -1,13 +1,39 @@
 mod blindbid;
+mod buffer;
 mod gadgets;
 
-use curve25519_dalek::scalar::Scalar;
-use libc::{c_uchar, size_t};
+use libc::c_uchar;
 use std::slice;
+
+use crate::buffer::{Buffer, ProofBuffer};
+
+#[macro_use]
+extern crate lazy_static;
+
+#[no_mangle]
+pub unsafe extern "C" fn prog(
+    seed_ptr: *const [c_uchar; 32],
+    k_ptr: *const [c_uchar; 32],
+    d_ptr: *const [c_uchar; 32],
+    // output
+    q_ptr: *mut [c_uchar; 32],
+    x_ptr: *mut [c_uchar; 32],
+    y_ptr: *mut [c_uchar; 32],
+    y_inv_ptr: *mut [c_uchar; 32],
+    z_img_ptr: *mut [c_uchar; 32],
+) {
+    let (q, x, y, y_inv, z) = blindbid::prog(*seed_ptr, *k_ptr, *d_ptr);
+
+    (*q_ptr).copy_from_slice(&q.to_bytes());
+    (*x_ptr).copy_from_slice(&x.to_bytes());
+    (*y_ptr).copy_from_slice(&y.to_bytes());
+    (*y_inv_ptr).copy_from_slice(&y_inv.to_bytes());
+    (*z_img_ptr).copy_from_slice(&z.to_bytes());
+}
 
 #[no_mangle]
 // DESTROY ALL SENSITIVE DATA
-pub unsafe extern "C" fn prover(
+pub unsafe extern "C" fn prove(
     d_ptr: *const [c_uchar; 32],
     k_ptr: *const [c_uchar; 32],
     y_ptr: *const [c_uchar; 32],
@@ -15,12 +41,54 @@ pub unsafe extern "C" fn prover(
     q_ptr: *const [c_uchar; 32],
     z_img_ptr: *const [c_uchar; 32],
     seed_ptr: *const [c_uchar; 32],
-    pub_list_ptr: *const c_uchar,
-    pub_list_len: size_t, // constants: [Scalar; MIMC_ROUNDS], -- These will be generated in Rust
-                          // toggle: &[u64]
-) {
-    let pub_list: Vec<c_uchar> = slice::from_raw_parts(pub_list_ptr, pub_list_len).to_vec();
-    blindbid::prover(
-        *d_ptr, *k_ptr, *y_ptr, *y_inv_ptr, *q_ptr, *z_img_ptr, *seed_ptr, pub_list,
-    );
+    pub_list: *mut Buffer,
+    toggle: usize,
+) -> *mut ProofBuffer {
+    let pub_list: Vec<c_uchar> = slice::from_raw_parts((*pub_list).ptr, (*pub_list).len).to_vec();
+
+    match blindbid::prove(
+        *d_ptr, *k_ptr, *y_ptr, *y_inv_ptr, *q_ptr, *z_img_ptr, *seed_ptr, pub_list, toggle,
+    ) {
+        Ok(result) => {
+            let buff = ProofBuffer::new(result);
+            Box::into_raw(Box::new(buff))
+        }
+        Err(_) => std::ptr::null_mut(),
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn verify(
+    buff: *mut ProofBuffer,
+    seed_ptr: *const [c_uchar; 32],
+    pub_list: *mut Buffer,
+    q_ptr: *const [c_uchar; 32],
+    z_img_ptr: *const [c_uchar; 32],
+) -> bool {
+    let pub_list: Vec<c_uchar> = slice::from_raw_parts((*pub_list).ptr, (*pub_list).len).to_vec();
+    let proof: Vec<c_uchar> = slice::from_raw_parts((*buff).proof.ptr, (*buff).proof.len).to_vec();
+    let commitments: Vec<c_uchar> =
+        slice::from_raw_parts((*buff).commitments.ptr, (*buff).commitments.len).to_vec();
+    let t_c: Vec<c_uchar> = slice::from_raw_parts((*buff).t_c.ptr, (*buff).t_c.len).to_vec();
+
+    match blindbid::verify(
+        proof,
+        commitments,
+        t_c,
+        *seed_ptr,
+        pub_list,
+        *q_ptr,
+        *z_img_ptr,
+    ) {
+        Ok(_) => true,
+        Err(_) => false,
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dealloc_proof(buff: *mut ProofBuffer) {
+    (*buff).proof.free();
+    (*buff).commitments.free();
+    (*buff).t_c.free();
+    Box::from_raw(buff);
 }

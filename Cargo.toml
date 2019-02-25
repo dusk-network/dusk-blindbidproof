@@ -11,6 +11,7 @@ rand = "0.6"
 subtle = "2"
 curve25519-dalek = { version = "1.0.1", features = ["serde"] }
 libc = "0.2"
+lazy_static = "1.2.0"
 
 [dependencies.bulletproofs]
 git = "https://gitlab.dusk.network/kev/bp"
@@ -22,6 +23,6 @@ crate-type = ["staticlib"]
 
 [profile.release]
 panic = 'abort'
-lto = true
-incremental = false
-codegen-units = 1
+# lto = true
+incremental = true
+# codegen-units = 1
