@@ -200,3 +200,35 @@ func prog(d, k, seed ristretto.Scalar) (ristretto.Scalar, ristretto.Scalar, rist
 
 	return q, x, y, yInv, z
 }
+
+func mimc_hash(left, right ristretto.Scalar) ristretto.Scalar {
+	x := left
+	key := right
+
+	for i := 0; i < MIMC_ROUNDS; i++ {
+		a := ristretto.Scalar{}
+		a2 := ristretto.Scalar{}
+		a3 := ristretto.Scalar{}
+		a4 := ristretto.Scalar{}
+
+		// a = x + key + constants[i]
+		a.Add(&x, &key).Add(&a, &constants[i])
+
+		// a^2
+		a2.Square(&a)
+
+		// a ^3
+		a3.Mul(&a2, &a)
+
+		//a^4
+		a3.Mul(&a3, &a)
+
+		// a_7
+		x.Mul(&a4, &a3)
+	}
+
+	x.Add(&x, &key)
+
+	return x
+
+}
