@@ -97,8 +97,8 @@ func genRandomBytes(a int) []byte {
 
 // Prove creates a zkproof using d,k, seed and pubList
 // This will be accessed by the consensus
-func Prove(d, k, seed ristretto.Scalar, pubList []ristretto.Scalar) Proof {
-	var proof Proof
+// This will return the proof as a byte slice
+func Prove(d, k, seed ristretto.Scalar, pubList []ristretto.Scalar) []byte {
 
 	// generate intermediate values
 	q, x, y, yInv, z := prog(d, k, seed)
@@ -133,8 +133,9 @@ func Prove(d, k, seed ristretto.Scalar, pubList []ristretto.Scalar) Proof {
 	}
 
 	C.prove(dPtr, kPtr, yPtr, yInvPtr, qPtr, zPtr, seedPtr, &pubListBuff, index)
+	// Takr result from C.prove and make it into one big byte slice
 
-	return proof
+	return nil
 }
 
 //Shuffle will shuffle the x value in the slice
