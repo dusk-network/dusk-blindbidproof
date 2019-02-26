@@ -20,6 +20,55 @@ const MIMC_ROUNDS = 90
 // constants used in MIMC
 var constants = genConstants()
 
+// Prove creates a zkproof using d,k, seed and pubList
+// This will be accessed by the consensus
+// This will return the proof as a byte slice
+func Prove(d, k, seed ristretto.Scalar, pubList []ristretto.Scalar) []byte {
+
+	// generate intermediate values
+	q, x, y, yInv, z := prog(d, k, seed)
+
+	dBytes := d.Bytes()
+	kBytes := d.Bytes()
+	yBytes := y.Bytes()
+	yInvBytes := yInv.Bytes()
+	qBytes := q.Bytes()
+	zBytes := z.Bytes()
+	seedBytes := d.Bytes()
+
+	dPtr := sliceToPtr(dBytes)
+	kPtr := sliceToPtr(kBytes)
+	yPtr := sliceToPtr(yBytes)
+	yInvPtr := sliceToPtr(yInvBytes)
+	qPtr := sliceToPtr(qBytes)
+	zPtr := sliceToPtr(zBytes)
+	seedPtr := sliceToPtr(seedBytes)
+
+	// shuffle x in slice
+	pubList, index := Shuffle(x, pubList)
+
+	pL := make([]byte, 0, 32*len(pubList))
+	for i := 0; i < 8; i++ {
+		pL = append(pL, pubList[i].Bytes()...)
+	}
+
+	pubListBuff := C.struct_Buffer{
+		ptr: sliceToPtr(pL),
+		len: C.size_t(len(pL)),
+	}
+
+	C.prove(dPtr, kPtr, yPtr, yInvPtr, qPtr, zPtr, seedPtr, &pubListBuff, index)
+	// Takr result from C.prove and make it into one big byte slice
+
+	return nil
+}
+
+// Verify take a proof in byte format and returns true or false depending on whether
+// it is successful
+func Verify(proof []byte) bool {
+
+}
+
 func main() {
 	d := genRandomBytes(32)
 	k := genRandomBytes(32)
@@ -93,49 +142,6 @@ func genRandomBytes(a int) []byte {
 		os.Exit(1)
 	}
 	return key
-}
-
-// Prove creates a zkproof using d,k, seed and pubList
-// This will be accessed by the consensus
-// This will return the proof as a byte slice
-func Prove(d, k, seed ristretto.Scalar, pubList []ristretto.Scalar) []byte {
-
-	// generate intermediate values
-	q, x, y, yInv, z := prog(d, k, seed)
-
-	dBytes := d.Bytes()
-	kBytes := d.Bytes()
-	yBytes := y.Bytes()
-	yInvBytes := yInv.Bytes()
-	qBytes := q.Bytes()
-	zBytes := z.Bytes()
-	seedBytes := d.Bytes()
-
-	dPtr := sliceToPtr(dBytes)
-	kPtr := sliceToPtr(kBytes)
-	yPtr := sliceToPtr(yBytes)
-	yInvPtr := sliceToPtr(yInvBytes)
-	qPtr := sliceToPtr(qBytes)
-	zPtr := sliceToPtr(zBytes)
-	seedPtr := sliceToPtr(seedBytes)
-
-	// shuffle x in slice
-	pubList, index := Shuffle(x, pubList)
-
-	pL := make([]byte, 0, 32*len(pubList))
-	for i := 0; i < 8; i++ {
-		pL = append(pL, pubList[i].Bytes()...)
-	}
-
-	pubListBuff := C.struct_Buffer{
-		ptr: sliceToPtr(pL),
-		len: C.size_t(len(pL)),
-	}
-
-	C.prove(dPtr, kPtr, yPtr, yInvPtr, qPtr, zPtr, seedPtr, &pubListBuff, index)
-	// Takr result from C.prove and make it into one big byte slice
-
-	return nil
 }
 
 //Shuffle will shuffle the x value in the slice
