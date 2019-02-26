@@ -19,50 +19,6 @@ use crate::buffer::slice_to_scalar;
 
 const MIMC_ROUNDS: usize = 90;
 
-lazy_static! {
-  static ref CONSTANTS: [Scalar; MIMC_ROUNDS] = {
-    let mut blinding_rng = rand::thread_rng();
-    [Scalar::random(&mut blinding_rng); MIMC_ROUNDS]
-  };
-}
-
-pub fn prog(
-  seed_u8: [u8; 32],
-  k_u8: [u8; 32],
-  d_u8: [u8; 32],
-) -> (Scalar, Scalar, Scalar, Scalar, Scalar) {
-  let d = Scalar::from_bytes_mod_order(d_u8);
-  let k = Scalar::from_bytes_mod_order(k_u8);
-  let seed = Scalar::from_bytes_mod_order(seed_u8);
-
-  let m = mimc_hash(&k, &Scalar::zero());
-
-  let x = mimc_hash(&d, &m);
-
-  let y = mimc_hash(&seed, &x);
-
-  let z = mimc_hash(&seed, &m);
-
-  let y_inv = y.invert();
-  let q = d * y_inv;
-
-  (q, x, y, y_inv, z)
-}
-
-fn mimc_hash(left: &Scalar, right: &Scalar) -> Scalar {
-  let mut x = left.clone();
-  let key = right.clone();
-
-  for i in 0..MIMC_ROUNDS {
-    let a: Scalar = x + key + CONSTANTS[i];
-    let a_2 = a * a;
-    let a_3 = a_2 * a;
-    let a_4 = a_2 * a_2;
-    x = a_3 * a_4;
-  }
-  x + key
-}
-
 pub fn prove(
   d_u8: [u8; 32],
   k_u8: [u8; 32],
@@ -72,6 +28,7 @@ pub fn prove(
   z_img_u8: [u8; 32],
   seed_u8: [u8; 32],
   pub_list_u8: Vec<u8>,
+  constants: Vec<u8>,
   toggle: usize,
 ) -> Result<
   (
@@ -90,6 +47,8 @@ pub fn prove(
   let seed = Scalar::from_bytes_mod_order(seed_u8);
 
   let pub_list: Vec<Scalar> = pub_list_u8.chunks(32).map(slice_to_scalar).collect();
+  let constants: Vec<Scalar> = constants.chunks(32).map(slice_to_scalar).collect();
+
 
   let pc_gens = PedersenGens::default();
   let bp_gens = BulletproofGens::new(2048, 1);
@@ -126,11 +85,12 @@ pub fn prove(
     &mut prover,
     vars[0].into(),
     vars[1].into(),
+    vars[2].into(),
     vars[3].into(),
     q.into(),
     z_img.into(),
     seed.into(),
-    *CONSTANTS,
+    slice_to_constants(&constants),
     t_v,
     l_v,
   );
@@ -149,6 +109,7 @@ pub fn verify(
   pub_list_u8: Vec<u8>,
   q_u8: [u8; 32],
   z_img_u8: [u8; 32],
+  constants: Vec<u8>,
 ) -> Result<(), R1CSError> {
   let q = Scalar::from_bytes_mod_order(q_u8);
   let z_img = Scalar::from_bytes_mod_order(z_img_u8);
@@ -163,6 +124,7 @@ pub fn verify(
     .collect();
   let proof = R1CSProof::from_bytes(&proof_u8)?;
   let pub_list: Vec<Scalar> = pub_list_u8.chunks(32).map(slice_to_scalar).collect();
+  let constants: Vec<Scalar> = constants.chunks(32).map(slice_to_scalar).collect();
 
   let pc_gens = PedersenGens::default();
   let bp_gens = BulletproofGens::new(2048, 1);
@@ -190,11 +152,12 @@ pub fn verify(
     &mut verifier,
     vars[0].into(),
     vars[1].into(),
+    vars[2].into(),
     vars[3].into(),
     q.into(),
     z_img.into(),
     seed.into(),
-    *CONSTANTS,
+    slice_to_constants(&constants),
     t_c_v,
     l_v,
   );
@@ -203,4 +166,11 @@ pub fn verify(
   verifier
     .verify(&proof)
     .map_err(|_| R1CSError::VerificationError)
+}
+
+  fn slice_to_constants(bytes: &[Scalar]) -> [Scalar; MIMC_ROUNDS] {
+    let mut array = [Scalar::zero(); MIMC_ROUNDS];
+    let bytes = &bytes[..array.len()]; // panics if not enough data
+    array.copy_from_slice(bytes); 
+    array
 }

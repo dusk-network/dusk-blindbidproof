@@ -35,7 +35,7 @@ struct ProofBuffer *prove(const uint8_t *d_ptr,
             const uint8_t *z_img_ptr,
             const uint8_t *seed_ptr,
             struct Buffer *pub_list,
-            uintptr_t toggle);
+            uint8_t toggle);
 
 bool verify(struct ProofBuffer *buff,
             const uint8_t *seed_ptr,

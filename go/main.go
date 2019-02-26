@@ -4,8 +4,8 @@ package main
 // #include "./libblindbid.h"
 import "C"
 import (
-	"crypto/rand"
 	"fmt"
+	"math/rand"
 	"os"
 	"time"
 	"unsafe"
@@ -45,7 +45,8 @@ func Prove(d, k, seed ristretto.Scalar, pubList []ristretto.Scalar) []byte {
 	seedPtr := sliceToPtr(seedBytes)
 
 	// shuffle x in slice
-	pubList, index := Shuffle(x, pubList)
+	pubList, i := Shuffle(x, pubList)
+	index := C.uint8_t(i)
 
 	pL := make([]byte, 0, 32*len(pubList))
 	for i := 0; i < 8; i++ {
@@ -66,7 +67,7 @@ func Prove(d, k, seed ristretto.Scalar, pubList []ristretto.Scalar) []byte {
 // Verify take a proof in byte format and returns true or false depending on whether
 // it is successful
 func Verify(proof []byte) bool {
-
+	return true
 }
 
 func main() {
@@ -88,8 +89,6 @@ func main() {
 	yInvPtr := toPtr(yInv)
 	qPtr := toPtr(q)
 	zImgPtr := toPtr(zImg)
-
-	C.prog(seedPtr, kPtr, dPtr, qPtr, xPtr, yPtr, yInvPtr, zImgPtr)
 
 	pubList := make([]byte, 0, 32*8)
 

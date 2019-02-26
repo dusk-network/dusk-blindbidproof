@@ -42,12 +42,14 @@ pub unsafe extern "C" fn prove(
     z_img_ptr: *const [c_uchar; 32],
     seed_ptr: *const [c_uchar; 32],
     pub_list: *mut Buffer,
+    constants:*mut Buffer,
     toggle: usize,
 ) -> *mut ProofBuffer {
     let pub_list: Vec<c_uchar> = slice::from_raw_parts((*pub_list).ptr, (*pub_list).len).to_vec();
+    let constants: Vec<c_uchar>= slice::from_raw_parts((*constants).ptr, (*constants).len).to_vec();
 
     match blindbid::prove(
-        *d_ptr, *k_ptr, *y_ptr, *y_inv_ptr, *q_ptr, *z_img_ptr, *seed_ptr, pub_list, toggle,
+        *d_ptr, *k_ptr, *y_ptr, *y_inv_ptr, *q_ptr, *z_img_ptr, *seed_ptr, pub_list,constants, toggle,
     ) {
         Ok(result) => {
             let buff = ProofBuffer::new(result);
@@ -64,8 +66,10 @@ pub unsafe extern "C" fn verify(
     pub_list: *mut Buffer,
     q_ptr: *const [c_uchar; 32],
     z_img_ptr: *const [c_uchar; 32],
+    constants: *mut Buffer,
 ) -> bool {
     let pub_list: Vec<c_uchar> = slice::from_raw_parts((*pub_list).ptr, (*pub_list).len).to_vec();
+    let constants = slice::from_raw_parts((*constants).ptr, (*constants).len).to_vec();
     let proof: Vec<c_uchar> = slice::from_raw_parts((*buff).proof.ptr, (*buff).proof.len).to_vec();
     let commitments: Vec<c_uchar> =
         slice::from_raw_parts((*buff).commitments.ptr, (*buff).commitments.len).to_vec();
@@ -79,6 +83,7 @@ pub unsafe extern "C" fn verify(
         pub_list,
         *q_ptr,
         *z_img_ptr,
+        constants,
     ) {
         Ok(_) => true,
         Err(_) => false,
