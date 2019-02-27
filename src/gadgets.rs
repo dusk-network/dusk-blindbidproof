@@ -23,6 +23,18 @@ pub fn proof_gadget<CS: ConstraintSystem>(
     toggle: Vec<Variable>, // private: binary list indicating private number is somewhere in list
     items: Vec<LinearCombination>, // public list
 ) {
+
+    /*
+    
+    M = H(k)
+    X = H(D,M)
+    X element of public list
+    Y = H(S,X)
+    Z = H(S,M)
+    Q = F(D/Y)
+
+    */
+
     // Prove z
     let m = mimc_gadget(cs, k, Scalar::zero().into(), constants);
 
