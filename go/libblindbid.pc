@@ -1,4 +1,4 @@
 Name: blindbid
-Version: 665ec0a4c9dc6f70c1f089b3dcaac92aa8e1e0d8
+Version: 47ff5153a7b3289f8bcc3cc79fd8703aeda5e513
 Description: blindbid library library
 Libs: -lSystem -lresolv -lc -lm

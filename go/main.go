@@ -7,7 +7,6 @@ import (
 	"bytes"
 	"fmt"
 	"math/rand"
-	"os"
 	"time"
 	"unsafe"
 
@@ -31,12 +30,12 @@ func Prove(d, k, seed ristretto.Scalar, pubList []ristretto.Scalar) ([]byte, []b
 	q, x, y, yInv, z := prog(d, k, seed)
 
 	dBytes := d.Bytes()
-	kBytes := d.Bytes()
+	kBytes := k.Bytes()
 	yBytes := y.Bytes()
 	yInvBytes := yInv.Bytes()
 	qBytes := q.Bytes()
 	zBytes := z.Bytes()
-	seedBytes := d.Bytes()
+	seedBytes := seed.Bytes()
 
 	dPtr := toPtr(dBytes)
 	kPtr := toPtr(kBytes)
@@ -112,8 +111,8 @@ func main() {
 	k := genRandScalar()
 	seed := genRandScalar()
 
-	pubList := make([]ristretto.Scalar, 0, 0)
-	for i := 0; i < 0; i++ {
+	pubList := make([]ristretto.Scalar, 0, 5)
+	for i := 0; i < 5; i++ {
 		pubList = append(pubList, genRandScalar())
 	}
 
@@ -130,16 +129,6 @@ func genRandScalar() ristretto.Scalar {
 	return c
 }
 
-func genRandomBytes(a int) []byte {
-	key := make([]byte, a)
-
-	_, err := rand.Read(key)
-	if err != nil {
-		os.Exit(1)
-	}
-	return key
-}
-
 //Shuffle will shuffle the x value in the slice
 // returning the index of the newly shuffled item and the slice
 func shuffle(x ristretto.Scalar, vals []ristretto.Scalar) ([]ristretto.Scalar, uint8) {
@@ -147,14 +136,14 @@ func shuffle(x ristretto.Scalar, vals []ristretto.Scalar) ([]ristretto.Scalar, u
 	var index uint8
 
 	// append x to slice
-	vals = append(vals, x)
+	values := append(vals, x)
 
 	r := rand.New(rand.NewSource(time.Now().Unix()))
 
-	ret := make([]ristretto.Scalar, len(vals))
-	perm := r.Perm(len(vals))
+	ret := make([]ristretto.Scalar, len(values))
+	perm := r.Perm(len(values))
 	for i, randIndex := range perm {
-		ret[i] = vals[randIndex]
+		ret[i] = values[randIndex]
 		if ret[i].Equals(&x) {
 			index = uint8(i)
 		}
@@ -218,7 +207,7 @@ func mimc_hash(left, right ristretto.Scalar) ristretto.Scalar {
 		a3.Mul(&a2, &a)
 
 		//a^4
-		a3.Mul(&a3, &a)
+		a4.Mul(&a3, &a)
 
 		// a_7
 		x.Mul(&a4, &a3)
