@@ -7,29 +7,6 @@ use std::slice;
 
 use crate::buffer::{Buffer, ProofBuffer};
 
-#[macro_use]
-extern crate lazy_static;
-
-#[no_mangle]
-pub unsafe extern "C" fn prog(
-    seed_ptr: *const [c_uchar; 32],
-    k_ptr: *const [c_uchar; 32],
-    d_ptr: *const [c_uchar; 32],
-    // output
-    q_ptr: *mut [c_uchar; 32],
-    x_ptr: *mut [c_uchar; 32],
-    y_ptr: *mut [c_uchar; 32],
-    y_inv_ptr: *mut [c_uchar; 32],
-    z_img_ptr: *mut [c_uchar; 32],
-) {
-    let (q, x, y, y_inv, z) = blindbid::prog(*seed_ptr, *k_ptr, *d_ptr);
-
-    (*q_ptr).copy_from_slice(&q.to_bytes());
-    (*x_ptr).copy_from_slice(&x.to_bytes());
-    (*y_ptr).copy_from_slice(&y.to_bytes());
-    (*y_inv_ptr).copy_from_slice(&y_inv.to_bytes());
-    (*z_img_ptr).copy_from_slice(&z.to_bytes());
-}
 
 #[no_mangle]
 // DESTROY ALL SENSITIVE DATA
@@ -45,6 +22,7 @@ pub unsafe extern "C" fn prove(
     constants:*mut Buffer,
     toggle: usize,
 ) -> *mut ProofBuffer {
+
     let pub_list: Vec<c_uchar> = slice::from_raw_parts((*pub_list).ptr, (*pub_list).len).to_vec();
     let constants: Vec<c_uchar>= slice::from_raw_parts((*constants).ptr, (*constants).len).to_vec();
 

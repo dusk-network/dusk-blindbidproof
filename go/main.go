@@ -4,12 +4,14 @@ package main
 // #include "./libblindbid.h"
 import "C"
 import (
+	"bytes"
 	"fmt"
 	"math/rand"
 	"os"
 	"time"
 	"unsafe"
 
+	"github.com/CityOfZion/neo-go/pkg/wire/util"
 	ristretto "github.com/bwesterb/go-ristretto"
 )
 
@@ -23,7 +25,7 @@ var constants = genConstants()
 // Prove creates a zkproof using d,k, seed and pubList
 // This will be accessed by the consensus
 // This will return the proof as a byte slice
-func Prove(d, k, seed ristretto.Scalar, pubList []ristretto.Scalar) []byte {
+func Prove(d, k, seed ristretto.Scalar, pubList []ristretto.Scalar) ([]byte, []byte, []byte, []byte) {
 
 	// generate intermediate values
 	q, x, y, yInv, z := prog(d, k, seed)
@@ -36,20 +38,20 @@ func Prove(d, k, seed ristretto.Scalar, pubList []ristretto.Scalar) []byte {
 	zBytes := z.Bytes()
 	seedBytes := d.Bytes()
 
-	dPtr := sliceToPtr(dBytes)
-	kPtr := sliceToPtr(kBytes)
-	yPtr := sliceToPtr(yBytes)
-	yInvPtr := sliceToPtr(yInvBytes)
-	qPtr := sliceToPtr(qBytes)
-	zPtr := sliceToPtr(zBytes)
-	seedPtr := sliceToPtr(seedBytes)
+	dPtr := toPtr(dBytes)
+	kPtr := toPtr(kBytes)
+	yPtr := toPtr(yBytes)
+	yInvPtr := toPtr(yInvBytes)
+	qPtr := toPtr(qBytes)
+	zPtr := toPtr(zBytes)
+	seedPtr := toPtr(seedBytes)
 
 	// shuffle x in slice
-	pubList, i := Shuffle(x, pubList)
+	pubList, i := shuffle(x, pubList)
 	index := C.uint8_t(i)
 
 	pL := make([]byte, 0, 32*len(pubList))
-	for i := 0; i < 8; i++ {
+	for i := 0; i < len(pubList); i++ {
 		pL = append(pL, pubList[i].Bytes()...)
 	}
 
@@ -58,79 +60,74 @@ func Prove(d, k, seed ristretto.Scalar, pubList []ristretto.Scalar) []byte {
 		len: C.size_t(len(pL)),
 	}
 
-	C.prove(dPtr, kPtr, yPtr, yInvPtr, qPtr, zPtr, seedPtr, &pubListBuff, index)
-	// Takr result from C.prove and make it into one big byte slice
+	con := constantsToBytes(constants)
 
-	return nil
+	constListBuff := C.struct_Buffer{
+		ptr: sliceToPtr(con),
+		len: C.size_t(len(con)),
+	}
+
+	result := C.prove(dPtr, kPtr, yPtr, yInvPtr, qPtr, zPtr, seedPtr, &pubListBuff, &constListBuff, index)
+	data := proofToBytes(*result)
+
+	return data, q.Bytes(), z.Bytes(), pL
 }
 
 // Verify take a proof in byte format and returns true or false depending on whether
 // it is successful
-func Verify(proof []byte) bool {
-	return true
-}
+func Verify(proof, seed, pubList, q, zImg []byte) bool {
+	pBuf := bytesToProof(proof)
 
-func main() {
-	d := genRandomBytes(32)
-	k := genRandomBytes(32)
-	seed := genRandomBytes(32)
-	dPtr := sliceToPtr(d)
-	kPtr := sliceToPtr(k)
-	seedPtr := sliceToPtr(seed)
-
-	x := make([]byte, 32)
-	y := make([]byte, 32)
-	yInv := make([]byte, 32)
-	q := make([]byte, 32)
-	zImg := make([]byte, 32)
-
-	xPtr := toPtr(x)
-	yPtr := toPtr(y)
-	yInvPtr := toPtr(yInv)
 	qPtr := toPtr(q)
 	zImgPtr := toPtr(zImg)
-
-	pubList := make([]byte, 0, 32*8)
-
-	for i := 0; i < 7; i++ {
-		pubList = append(pubList, genRandomBytes(32)...)
-	}
-	pubList = append(pubList, x...)
+	seedPtr := sliceToPtr(seed)
 
 	pubListBuff := C.struct_Buffer{
 		ptr: sliceToPtr(pubList),
 		len: C.size_t(len(pubList)),
 	}
 
-	result := C.prove(dPtr, kPtr, yPtr, yInvPtr, qPtr, zImgPtr, seedPtr, &pubListBuff, 7)
+	con := constantsToBytes(constants)
 
-	if result != nil {
-		fmt.Printf("%+v\n", result)
-		// here we send the same result to verify, ideally since it won't be
-		// in the same machine, it would be send over a socket and deallocate
-		// promptly.
-
-		verified := C.verify(result, seedPtr, &pubListBuff, qPtr, zImgPtr)
-		C.dealloc_proof(result)
-		if verified {
-			fmt.Print("Verified\n")
-		} else {
-			fmt.Print("Verification failed\n")
-			os.Exit(1)
-		}
-	} else {
-		os.Exit(1)
+	constListBuff := C.struct_Buffer{
+		ptr: sliceToPtr(con),
+		len: C.size_t(len(con)),
 	}
+
+	verified := C.verify(&pBuf, seedPtr, &pubListBuff, qPtr, zImgPtr, &constListBuff)
+
+	if verified {
+		fmt.Println("This is Verified!")
+		return true
+	}
+
+	fmt.Println("Veriy fail")
+
+	return false
 }
 
-func toPtr(data []byte) *C.uchar {
-	return (*C.uchar)(unsafe.Pointer(&data[0]))
+func main() {
+
+	d := genRandScalar()
+	k := genRandScalar()
+	seed := genRandScalar()
+
+	pubList := make([]ristretto.Scalar, 0, 0)
+	for i := 0; i < 0; i++ {
+		pubList = append(pubList, genRandScalar())
+	}
+
+	proof, qBytes, zBytes, pLb := Prove(d, k, seed, pubList)
+
+	res := Verify(proof, seed.Bytes(), pLb, qBytes, zBytes)
+	fmt.Println("VErif", res)
+
 }
 
-func sliceToPtr(data []byte) *C.uchar {
-	cData := C.CBytes(data)
-	cDataPtr := (*C.uchar)(cData)
-	return cDataPtr
+func genRandScalar() ristretto.Scalar {
+	c := ristretto.Scalar{}
+	c.Rand()
+	return c
 }
 
 func genRandomBytes(a int) []byte {
@@ -145,7 +142,7 @@ func genRandomBytes(a int) []byte {
 
 //Shuffle will shuffle the x value in the slice
 // returning the index of the newly shuffled item and the slice
-func Shuffle(x ristretto.Scalar, vals []ristretto.Scalar) ([]ristretto.Scalar, uint8) {
+func shuffle(x ristretto.Scalar, vals []ristretto.Scalar) ([]ristretto.Scalar, uint8) {
 
 	var index uint8
 
@@ -231,4 +228,67 @@ func mimc_hash(left, right ristretto.Scalar) ristretto.Scalar {
 
 	return x
 
+}
+
+func proofToBytes(pBuf C.struct_ProofBuffer) []byte {
+
+	buf := &bytes.Buffer{}
+	bw := BinWriter{W: buf}
+
+	proof := bufferToBytes(pBuf.proof)
+	bw.VarBytes(proof)
+
+	commitments := bufferToBytes(pBuf.commitments)
+	bw.VarBytes(commitments)
+
+	toggleComm := bufferToBytes(pBuf.t_c)
+	bw.VarBytes(toggleComm)
+
+	return buf.Bytes()
+}
+
+func bytesToProof(b []byte) C.struct_ProofBuffer {
+
+	r := bytes.NewReader(b)
+	br := &util.BinReader{R: r}
+
+	proof := br.VarBytes()
+
+	proofBuff := C.struct_Buffer{
+		ptr: sliceToPtr(proof),
+		len: C.size_t(len(proof)),
+	}
+
+	commitments := br.VarBytes()
+
+	commBuff := C.struct_Buffer{
+		ptr: sliceToPtr(commitments),
+		len: C.size_t(len(commitments)),
+	}
+	toggleComm := br.VarBytes()
+
+	toggleBuff := C.struct_Buffer{
+		ptr: sliceToPtr(toggleComm),
+		len: C.size_t(len(toggleComm)),
+	}
+
+	pBuf := C.struct_ProofBuffer{
+		proof:       proofBuff,
+		commitments: commBuff,
+		t_c:         toggleBuff,
+	}
+
+	return pBuf
+}
+
+func bufferToBytes(buf C.struct_Buffer) []byte {
+	return C.GoBytes(unsafe.Pointer(buf.ptr), C.int(buf.len))
+}
+
+func constantsToBytes(cconstants []ristretto.Scalar) []byte {
+	c := make([]byte, 0, 90*32)
+	for i := 0; i < len(constants); i++ {
+		c = append(c, constants[i].Bytes()...)
+	}
+	return c
 }

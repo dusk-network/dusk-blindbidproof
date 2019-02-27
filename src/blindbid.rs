@@ -66,6 +66,7 @@ pub fn prove(
     .map(|v| prover.commit(*v, Scalar::random(&mut blinding_rng)))
     .unzip();
 
+
   let (t_c, t_v): (Vec<_>, Vec<_>) = (0..pub_list.len())
     .map(|x| {
       let scalar = if x == toggle {
@@ -126,6 +127,7 @@ pub fn verify(
   let pub_list: Vec<Scalar> = pub_list_u8.chunks(32).map(slice_to_scalar).collect();
   let constants: Vec<Scalar> = constants.chunks(32).map(slice_to_scalar).collect();
 
+
   let pc_gens = PedersenGens::default();
   let bp_gens = BulletproofGens::new(2048, 1);
 
@@ -146,6 +148,7 @@ pub fn verify(
     .iter()
     .map(|&x| Scalar::from(x).into())
     .collect::<Vec<_>>();
+ 
 
   // 3. Build a CS
   proof_gadget(
@@ -161,7 +164,6 @@ pub fn verify(
     t_c_v,
     l_v,
   );
-
   // 4. Verify the proof
   verifier
     .verify(&proof)

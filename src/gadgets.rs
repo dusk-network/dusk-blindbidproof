@@ -14,6 +14,7 @@ pub fn proof_gadget<CS: ConstraintSystem>(
     cs: &mut CS,
     d: LinearCombination,
     k: LinearCombination,
+    y :LinearCombination,
     y_inv: LinearCombination,
     q: LinearCombination,
     z_img: LinearCombination,
@@ -46,6 +47,7 @@ fn mimc_gadget<CS: ConstraintSystem>(
     right: LinearCombination,
     constants: [Scalar; MIMC_ROUNDS],
 ) -> LinearCombination {
+
     assert_eq!(MIMC_ROUNDS, constants.len());
 
     let mut x = left.clone();
@@ -103,7 +105,6 @@ fn one_of_many_gadget<CS: ConstraintSystem>(
     for i in toggle.iter() {
         boolean_gadget(cs, i.clone().into());
     }
-
     // toggle_sum[i] = toggle_sum(i-1) + toggle(i)
     let mut toggle_sum: Vec<LinearCombination> = Vec::with_capacity(toggle_len);
     toggle_sum.push(toggle[0].clone().into());
