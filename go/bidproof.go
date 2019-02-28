@@ -106,7 +106,7 @@ func Verify(proof, seed, pubList, q, zImg []byte) bool {
 }
 
 // CalculateX calculates the blind bid X
-func CalculateX(d, k, seed ristretto.Scalar) ristretto.Scalar {
+func CalculateX(d, k ristretto.Scalar) ristretto.Scalar {
 	zero := ristretto.Scalar{}
 	zero.SetZero()
 
