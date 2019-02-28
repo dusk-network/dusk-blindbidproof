@@ -10,6 +10,11 @@ func main() {
 
 	// amount in the bidding transaction
 	d := genRandScalar()
+
+	dAsBytes := d.Bytes()
+
+	d = bytesToScalar(dAsBytes)
+
 	// secret number
 	k := genRandScalar()
 	// seed from block
@@ -21,19 +26,13 @@ func main() {
 		pubList = append(pubList, genRandScalar())
 	}
 
-	wrongpL := make([]byte, 0, 32*len(pubList))
-	for i := 0; i < len(pubList)+1; i++ {
-		s := genRandScalar()
-		wrongpL = append(wrongpL, s.Bytes()...)
-	}
-
-	proof, qBytes, zBytes, _ := Prove(d, k, seed, pubList)
+	proof, qBytes, zBytes, pL := Prove(d, k, seed, pubList)
 
 	fmt.Printf("Score is %d \n", qBytes)
 	fmt.Printf("Z is %d \n", zBytes)
 	fmt.Printf("proof is %d \n", zBytes)
 
-	res := Verify(proof, seed.Bytes(), wrongpL, qBytes, zBytes)
+	res := Verify(proof, seed.Bytes(), pL, qBytes, zBytes)
 	fmt.Println(res)
 }
 
@@ -41,4 +40,13 @@ func genRandScalar() ristretto.Scalar {
 	c := ristretto.Scalar{}
 	c.Rand()
 	return c
+}
+
+func bytesToScalar(d []byte) ristretto.Scalar {
+	x := ristretto.Scalar{}
+
+	var buf [32]byte
+	copy(buf[:], d[:])
+	x.SetBytes(&buf)
+	return x
 }
