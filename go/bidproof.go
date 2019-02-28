@@ -10,7 +10,6 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/CityOfZion/neo-go/pkg/wire/util"
 	ristretto "github.com/bwesterb/go-ristretto"
 )
 
@@ -226,7 +225,7 @@ func proofToBytes(pBuf C.struct_ProofBuffer) []byte {
 func bytesToProof(b []byte) C.struct_ProofBuffer {
 
 	r := bytes.NewReader(b)
-	br := &util.BinReader{R: r}
+	br := &BinReader{R: r}
 
 	proof := br.VarBytes()
 
