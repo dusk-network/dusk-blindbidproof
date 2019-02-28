@@ -92,7 +92,6 @@ func Verify(proof, seed, pubList, q, zImg []byte) bool {
 	verified := C.verify(&pBuf, seedPtr, &pubListBuff, qPtr, zImgPtr, &constListBuff)
 
 	if verified {
-		fmt.Println("This is Verified!")
 		return true
 	}
 
