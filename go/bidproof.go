@@ -105,6 +105,17 @@ func Verify(proof, seed, pubList, q, zImg []byte) bool {
 	return false
 }
 
+// CalculateX calculates the blind bid X
+func CalculateX(d, k, seed ristretto.Scalar) ristretto.Scalar {
+	zero := ristretto.Scalar{}
+	zero.SetZero()
+
+	m := mimc_hash(k, zero)
+
+	x := mimc_hash(d, m)
+	return x
+}
+
 //Shuffle will shuffle the x value in the slice
 // returning the index of the newly shuffled item and the slice
 func shuffle(x ristretto.Scalar, vals []ristretto.Scalar) ([]ristretto.Scalar, uint8) {
