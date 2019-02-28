@@ -19,6 +19,7 @@ const MIMC_ROUNDS = 90
 
 // constants used in MIMC
 var constants = genConstants()
+var conBytes = constantsToBytes(constants)
 
 // Prove creates a zkproof using d,k, seed and pubList
 // This will be accessed by the consensus
@@ -58,11 +59,9 @@ func Prove(d, k, seed ristretto.Scalar, pubList []ristretto.Scalar) ([]byte, []b
 		len: C.size_t(len(pL)),
 	}
 
-	con := constantsToBytes(constants)
-
 	constListBuff := C.struct_Buffer{
-		ptr: sliceToPtr(con),
-		len: C.size_t(len(con)),
+		ptr: sliceToPtr(conBytes),
+		len: C.size_t(len(conBytes)),
 	}
 
 	result := C.prove(dPtr, kPtr, yPtr, yInvPtr, qPtr, zPtr, seedPtr, &pubListBuff, &constListBuff, index)
@@ -85,11 +84,9 @@ func Verify(proof, seed, pubList, q, zImg []byte) bool {
 		len: C.size_t(len(pubList)),
 	}
 
-	con := constantsToBytes(constants)
-
 	constListBuff := C.struct_Buffer{
-		ptr: sliceToPtr(con),
-		len: C.size_t(len(con)),
+		ptr: sliceToPtr(conBytes),
+		len: C.size_t(len(conBytes)),
 	}
 
 	verified := C.verify(&pBuf, seedPtr, &pubListBuff, qPtr, zImgPtr, &constListBuff)
@@ -148,6 +145,7 @@ func genConstants() []ristretto.Scalar {
 		constants[i] = c
 		seed = c.Bytes()
 	}
+
 	return constants
 }
 
