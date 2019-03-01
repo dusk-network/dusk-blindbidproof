@@ -1,4 +1,4 @@
-package main
+package blindbid
 
 import (
 	"encoding/binary"

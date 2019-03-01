@@ -1,4 +1,4 @@
-package main
+package blindbid
 
 // #cgo LDFLAGS: -L../target/release -lblindbid -framework Security
 // #include "./libblindbid.h"
