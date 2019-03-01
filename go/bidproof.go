@@ -5,7 +5,6 @@ package blindbid
 import "C"
 import (
 	"bytes"
-	"fmt"
 	"math/rand"
 	"time"
 	"unsafe"
@@ -95,8 +94,6 @@ func Verify(proof, seed, pubList, q, zImg []byte) bool {
 		return true
 	}
 
-	fmt.Println("Verify fail")
-
 	return false
 }
 
@@ -109,6 +106,15 @@ func CalculateX(d, k ristretto.Scalar) ristretto.Scalar {
 
 	x := mimc_hash(d, m)
 	return x
+}
+
+// CalculateM calculates H(k)
+func CalculateM(d, k ristretto.Scalar) ristretto.Scalar {
+	zero := ristretto.Scalar{}
+	zero.SetZero()
+
+	m := mimc_hash(k, zero)
+	return m
 }
 
 //Shuffle will shuffle the x value in the slice
