@@ -14,37 +14,25 @@ pub fn proof_gadget<CS: ConstraintSystem>(
     cs: &mut CS,
     d: LinearCombination,
     k: LinearCombination,
-    y :LinearCombination,
     y_inv: LinearCombination,
     q: LinearCombination,
     z_img: LinearCombination,
     seed: LinearCombination,
-    constants: [Scalar; MIMC_ROUNDS],
+    constants: Vec<Scalar>,
     toggle: Vec<Variable>, // private: binary list indicating private number is somewhere in list
     items: Vec<LinearCombination>, // public list
 ) {
-
-    /*
-    
-    M = H(k)
-    X = H(D,M)
-    X element of public list
-    Y = H(S,X)
-    Z = H(S,M)
-    Q = F(D/Y)
-
-    */
-
+    assert_eq!(MIMC_ROUNDS, constants.len());
     // Prove z
-    let m = mimc_gadget(cs, k, Scalar::zero().into(), constants);
+    let m = mimc_gadget(cs, k, Scalar::zero().into(), &constants);
 
-    let x = mimc_gadget(cs, d.clone(), m.clone(), constants);
+    let x = mimc_gadget(cs, d.clone(), m.clone(), &constants);
 
     one_of_many_gadget(cs, x.clone(), toggle, items);
 
-    let y = mimc_gadget(cs, seed.clone(), x, constants);
+    let y = mimc_gadget(cs, seed.clone(), x, &constants);
 
-    let z = mimc_gadget(cs, seed, m, constants);
+    let z = mimc_gadget(cs, seed, m, &constants);
 
     cs.constrain(z_img - z);
 
@@ -57,9 +45,8 @@ fn mimc_gadget<CS: ConstraintSystem>(
     cs: &mut CS,
     left: LinearCombination,
     right: LinearCombination,
-    constants: [Scalar; MIMC_ROUNDS],
+    constants: &Vec<Scalar>,
 ) -> LinearCombination {
-
     assert_eq!(MIMC_ROUNDS, constants.len());
 
     let mut x = left.clone();
@@ -117,6 +104,7 @@ fn one_of_many_gadget<CS: ConstraintSystem>(
     for i in toggle.iter() {
         boolean_gadget(cs, i.clone().into());
     }
+
     // toggle_sum[i] = toggle_sum(i-1) + toggle(i)
     let mut toggle_sum: Vec<LinearCombination> = Vec::with_capacity(toggle_len);
     toggle_sum.push(toggle[0].clone().into());

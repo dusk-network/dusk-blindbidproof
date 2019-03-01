@@ -4,7 +4,6 @@ package blindbid
 // #include "./libblindbid.h"
 import "C"
 import (
-	"bytes"
 	"math/rand"
 	"time"
 	"unsafe"
@@ -12,9 +11,8 @@ import (
 	ristretto "github.com/bwesterb/go-ristretto"
 )
 
-// MIMC_ROUNDS is the number of rounds
-// for each mimc hash
-const MIMC_ROUNDS = 90
+// The number of rounds or each mimc hash
+const mimcRounds = 90
 
 // constants used in MIMC
 var constants = genConstants()
@@ -64,7 +62,7 @@ func Prove(d, k, seed ristretto.Scalar, pubList []ristretto.Scalar) ([]byte, []b
 	}
 
 	result := C.prove(dPtr, kPtr, yPtr, yInvPtr, qPtr, zPtr, seedPtr, &pubListBuff, &constListBuff, index)
-	data := proofToBytes(*result)
+	data := bufferToBytes(*result)
 
 	return data, q.Bytes(), z.Bytes(), pL
 }
@@ -72,7 +70,10 @@ func Prove(d, k, seed ristretto.Scalar, pubList []ristretto.Scalar) ([]byte, []b
 // Verify take a proof in byte format and returns true or false depending on whether
 // it is successful
 func Verify(proof, seed, pubList, q, zImg []byte) bool {
-	pBuf := bytesToProof(proof)
+	pBuf := C.struct_Buffer{
+		ptr: sliceToPtr(proof),
+		len: C.size_t(len(proof)),
+	}
 
 	qPtr := toPtr(q)
 	zImgPtr := toPtr(zImg)
@@ -102,9 +103,9 @@ func CalculateX(d, k ristretto.Scalar) ristretto.Scalar {
 	zero := ristretto.Scalar{}
 	zero.SetZero()
 
-	m := mimc_hash(k, zero)
+	m := mimcHash(k, zero)
 
-	x := mimc_hash(d, m)
+	x := mimcHash(d, m)
 	return x
 }
 
@@ -113,7 +114,7 @@ func CalculateM(d, k ristretto.Scalar) ristretto.Scalar {
 	zero := ristretto.Scalar{}
 	zero.SetZero()
 
-	m := mimc_hash(k, zero)
+	m := mimcHash(k, zero)
 	return m
 }
 
@@ -142,7 +143,7 @@ func shuffle(x ristretto.Scalar, vals []ristretto.Scalar) ([]ristretto.Scalar, u
 // genConstants will generate the constants for
 // MIMC rounds
 func genConstants() []ristretto.Scalar {
-	constants := make([]ristretto.Scalar, MIMC_ROUNDS)
+	constants := make([]ristretto.Scalar, mimcRounds)
 	var seed = []byte("blind bid")
 	for i := 0; i < len(constants); i++ {
 		c := ristretto.Scalar{}
@@ -159,16 +160,16 @@ func prog(d, k, seed ristretto.Scalar) (ristretto.Scalar, ristretto.Scalar, rist
 	zero := ristretto.Scalar{}
 	zero.SetZero()
 
-	m := mimc_hash(k, zero)
+	m := mimcHash(k, zero)
 
-	x := mimc_hash(d, m)
+	x := mimcHash(d, m)
 
-	y := mimc_hash(seed, x)
+	y := mimcHash(seed, x)
 
 	yInv := ristretto.Scalar{}
 	yInv.Inverse(&y)
 
-	z := mimc_hash(seed, m)
+	z := mimcHash(seed, m)
 
 	q := ristretto.Scalar{}
 	q.Mul(&d, &yInv)
@@ -176,11 +177,11 @@ func prog(d, k, seed ristretto.Scalar) (ristretto.Scalar, ristretto.Scalar, rist
 	return q, x, y, yInv, z
 }
 
-func mimc_hash(left, right ristretto.Scalar) ristretto.Scalar {
+func mimcHash(left, right ristretto.Scalar) ristretto.Scalar {
 	x := left
 	key := right
 
-	for i := 0; i < MIMC_ROUNDS; i++ {
+	for i := 0; i < mimcRounds; i++ {
 		a := ristretto.Scalar{}
 		a2 := ristretto.Scalar{}
 		a3 := ristretto.Scalar{}
@@ -206,57 +207,6 @@ func mimc_hash(left, right ristretto.Scalar) ristretto.Scalar {
 
 	return x
 
-}
-
-func proofToBytes(pBuf C.struct_ProofBuffer) []byte {
-
-	buf := &bytes.Buffer{}
-	bw := BinWriter{W: buf}
-
-	proof := bufferToBytes(pBuf.proof)
-	bw.VarBytes(proof)
-
-	commitments := bufferToBytes(pBuf.commitments)
-	bw.VarBytes(commitments)
-
-	toggleComm := bufferToBytes(pBuf.t_c)
-	bw.VarBytes(toggleComm)
-
-	return buf.Bytes()
-}
-
-func bytesToProof(b []byte) C.struct_ProofBuffer {
-
-	r := bytes.NewReader(b)
-	br := &BinReader{R: r}
-
-	proof := br.VarBytes()
-
-	proofBuff := C.struct_Buffer{
-		ptr: sliceToPtr(proof),
-		len: C.size_t(len(proof)),
-	}
-
-	commitments := br.VarBytes()
-
-	commBuff := C.struct_Buffer{
-		ptr: sliceToPtr(commitments),
-		len: C.size_t(len(commitments)),
-	}
-	toggleComm := br.VarBytes()
-
-	toggleBuff := C.struct_Buffer{
-		ptr: sliceToPtr(toggleComm),
-		len: C.size_t(len(toggleComm)),
-	}
-
-	pBuf := C.struct_ProofBuffer{
-		proof:       proofBuff,
-		commitments: commBuff,
-		t_c:         toggleBuff,
-	}
-
-	return pBuf
 }
 
 func bufferToBytes(buf C.struct_Buffer) []byte {

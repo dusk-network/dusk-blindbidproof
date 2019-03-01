@@ -1,7 +1,3 @@
-## WIP
-
-Works, but a lot of things re-added to make it work on my latop
-
 ## How to build the library
 
     $ cargo build --release
