@@ -1,12 +1,10 @@
 package blindbid
 
-// #cgo LDFLAGS: -L../target/release -lblindbid -framework Security
-// #include "./libblindbid.h"
-import "C"
 import (
 	"math/rand"
+	"os"
+	"path/filepath"
 	"time"
-	"unsafe"
 
 	ristretto "github.com/bwesterb/go-ristretto"
 )
@@ -16,86 +14,84 @@ const mimcRounds = 90
 
 // constants used in MIMC
 var constants = genConstants()
-var conBytes = constantsToBytes(constants)
+
+var pipePath = tempFilePath("pipe-channel")
 
 // Prove creates a zkproof using d,k, seed and pubList
 // This will be accessed by the consensus
 // This will return the proof as a byte slice
 func Prove(d, k, seed ristretto.Scalar, pubList []ristretto.Scalar) ([]byte, []byte, []byte, []byte) {
+	pipe := NamedPipe{Path: pipePath}
 
 	// generate intermediate values
 	q, x, y, yInv, z := prog(d, k, seed)
 
-	dBytes := d.Bytes()
-	kBytes := k.Bytes()
-	yBytes := y.Bytes()
-	yInvBytes := yInv.Bytes()
-	qBytes := q.Bytes()
-	zBytes := z.Bytes()
-	seedBytes := seed.Bytes()
-
-	dPtr := toPtr(dBytes)
-	kPtr := toPtr(kBytes)
-	yPtr := toPtr(yBytes)
-	yInvPtr := toPtr(yInvBytes)
-	qPtr := toPtr(qBytes)
-	zPtr := toPtr(zBytes)
-	seedPtr := toPtr(seedBytes)
-
 	// shuffle x in slice
 	pubList, i := shuffle(x, pubList)
-	index := C.uint8_t(i)
 
 	pL := make([]byte, 0, 32*len(pubList))
 	for i := 0; i < len(pubList); i++ {
 		pL = append(pL, pubList[i].Bytes()...)
 	}
 
-	pubListBuff := C.struct_Buffer{
-		ptr: sliceToPtr(pL),
-		len: C.size_t(len(pL)),
+	bytes := BytesArray{}
+
+	// set opcode
+	bytes.WriteUint8(1) // Prove
+	// set payload
+	bytes.Write(d.Bytes())
+	bytes.Write(k.Bytes())
+	bytes.Write(y.Bytes())
+	bytes.Write(yInv.Bytes())
+	bytes.Write(q.Bytes())
+	bytes.Write(z.Bytes())
+	bytes.Write(seed.Bytes())
+	bytes.Write(pL)
+	bytes.WriteUint8(i)
+
+	// write to pipeline
+	if err := pipe.WriteBytes(bytes); err != nil {
+		panic(err)
 	}
 
-	constListBuff := C.struct_Buffer{
-		ptr: sliceToPtr(conBytes),
-		len: C.size_t(len(conBytes)),
+	// read the result
+	bytes, err := pipe.ReadBytes()
+	if err != nil {
+		panic(err)
 	}
 
-	result := C.prove(dPtr, kPtr, yPtr, yInvPtr, qPtr, zPtr, seedPtr, &pubListBuff, &constListBuff, index)
-	data := bufferToBytes(*result)
+	// result := C.prove(dPtr, kPtr, yPtr, yInvPtr, qPtr, zPtr, seedPtr, &pubListBuff, &constListBuff, index)
 
-	return data, q.Bytes(), z.Bytes(), pL
+	return bytes.Bytes(), q.Bytes(), z.Bytes(), pL
 }
 
 // Verify take a proof in byte format and returns true or false depending on whether
 // it is successful
 func Verify(proof, seed, pubList, q, zImg []byte) bool {
-	pBuf := C.struct_Buffer{
-		ptr: sliceToPtr(proof),
-		len: C.size_t(len(proof)),
+	pipe := NamedPipe{Path: pipePath}
+	bytes := BytesArray{}
+
+	// set opcode
+	bytes.WriteUint8(2) // Verify
+	// set payload
+	bytes.Write(proof)
+	bytes.Write(seed)
+	bytes.Write(pubList)
+	bytes.Write(q)
+	bytes.Write(zImg)
+
+	// write to pipeline
+	if err := pipe.WriteBytes(bytes); err != nil {
+		panic(err)
 	}
 
-	qPtr := toPtr(q)
-	zImgPtr := toPtr(zImg)
-	seedPtr := sliceToPtr(seed)
-
-	pubListBuff := C.struct_Buffer{
-		ptr: sliceToPtr(pubList),
-		len: C.size_t(len(pubList)),
+	// read the result
+	bytes, err := pipe.ReadBytes()
+	if err != nil {
+		panic(err)
 	}
 
-	constListBuff := C.struct_Buffer{
-		ptr: sliceToPtr(conBytes),
-		len: C.size_t(len(conBytes)),
-	}
-
-	verified := C.verify(&pBuf, seedPtr, &pubListBuff, qPtr, zImgPtr, &constListBuff)
-
-	if verified {
-		return true
-	}
-
-	return false
+	return bytes.Bytes()[0] == 1
 }
 
 // CalculateX calculates the blind bid X
@@ -180,13 +176,12 @@ func prog(d, k, seed ristretto.Scalar) (ristretto.Scalar, ristretto.Scalar, rist
 func mimcHash(left, right ristretto.Scalar) ristretto.Scalar {
 	x := left
 	key := right
+	a := ristretto.Scalar{}
+	a2 := ristretto.Scalar{}
+	a3 := ristretto.Scalar{}
+	a4 := ristretto.Scalar{}
 
 	for i := 0; i < mimcRounds; i++ {
-		a := ristretto.Scalar{}
-		a2 := ristretto.Scalar{}
-		a3 := ristretto.Scalar{}
-		a4 := ristretto.Scalar{}
-
 		// a = x + key + constants[i]
 		a.Add(&x, &key).Add(&a, &constants[i])
 
@@ -209,14 +204,14 @@ func mimcHash(left, right ristretto.Scalar) ristretto.Scalar {
 
 }
 
-func bufferToBytes(buf C.struct_Buffer) []byte {
-	return C.GoBytes(unsafe.Pointer(buf.ptr), C.int(buf.len))
-}
-
 func constantsToBytes(cconstants []ristretto.Scalar) []byte {
 	c := make([]byte, 0, 90*32)
 	for i := 0; i < len(constants); i++ {
 		c = append(c, constants[i].Bytes()...)
 	}
 	return c
+}
+
+func tempFilePath(name string) string {
+	return filepath.Join(os.TempDir(), name)
 }

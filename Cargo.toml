@@ -1,7 +1,7 @@
 [package]
 name = "blindbid"
 version = "0.1.0"
-authors = ["kev <kevtheappdev@gmail.com>"]
+authors = ["kev <kevtheappdev@gmail.com>", "zer0 <matteo@dusk.network>"]
 edition = "2018"
 
 [dependencies]
@@ -12,14 +12,12 @@ subtle = "2"
 curve25519-dalek = { version = "1.0.1", features = ["serde", "avx2_backend"] }
 libc = "0.2"
 lazy_static = "1.2.0"
+sha2 = "0.8.0"
 
 [dependencies.bulletproofs]
 git = "https://gitlab.dusk.network/kev/bp"
 branch = "master"
 features = ["yoloproofs"]
-
-[lib]
-crate-type = ["staticlib"]
 
 [profile.release]
 panic = 'abort'

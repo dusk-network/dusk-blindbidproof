@@ -2,13 +2,20 @@
 
     $ cargo build --release
 
-## How to run go example
+## How to run 
+
+Two process needs to run.
+
+The provider first:
+
+    $ cargo run --release
+
+And then a consumer:
 
     $ cd go
-    $ go run main.go
+    $ go test -timeout 300s gitlab.dusk.network/dusk-core/blindbidproof/go -run "^(TestProveVerify)\$" -count 1
 
-It's possible also build the rust lib from `./go` folder, so it's not needed change current directory for every code change:
+Or, for benchmarks:
 
-    $ cd go
-    $ cargo build --release
-    $ go run main.go
+    $  cd go
+    $  go test -benchmem -run=^\$ gitlab.dusk.network/dusk-core/blindbidproof/go -bench "^(BenchmarkProveVerify)\$" -v

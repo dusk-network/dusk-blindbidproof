@@ -18,7 +18,7 @@ pub fn proof_gadget<CS: ConstraintSystem>(
     q: LinearCombination,
     z_img: LinearCombination,
     seed: LinearCombination,
-    constants: Vec<Scalar>,
+    constants: &Vec<Scalar>,
     toggle: Vec<Variable>, // private: binary list indicating private number is somewhere in list
     items: Vec<LinearCombination>, // public list
 ) {
