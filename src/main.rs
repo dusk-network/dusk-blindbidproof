@@ -1,5 +1,7 @@
 #[macro_use]
 extern crate lazy_static;
+#[macro_use]
+extern crate log;
 
 mod blindbid;
 mod buffer;
@@ -12,35 +14,67 @@ use pipe::NamedPipe;
 use std::env;
 use std::io::prelude::*;
 
+extern crate chrono;
+extern crate env_logger;
+
+use chrono::Local;
+use env_logger::Builder;
+use log::LevelFilter;
+use std::io::Write;
+
+fn get_log_level() -> LevelFilter {
+    let args: Vec<String> = env::args().collect();
+    if args.len() < 2 {
+        return LevelFilter::Info;
+    }
+    let flag: &str = &args[1];
+
+    match flag {
+        "-t" => LevelFilter::Trace,
+        "-d" => LevelFilter::Debug,
+        _ => LevelFilter::Info,
+    }
+}
+
 fn main() -> std::io::Result<()> {
+    Builder::new()
+        .format(|buf, record| {
+            writeln!(
+                buf,
+                "{} [{}] - {}",
+                Local::now().format("%Y-%m-%dT%H:%M:%S"),
+                record.level(),
+                record.args()
+            )
+        })
+        .filter(None, get_log_level())
+        .init();
+
     let mut pipefile = env::temp_dir();
     pipefile.push("pipe-channel");
 
-    println!("pipe: {:?}", pipefile);
-
     let mut pipe = NamedPipe::new(pipefile);
-
-    println!("connecting...");
     pipe.connect();
 
     loop {
         let mut buf = Vec::new();
-        println!("Waiting for content to read...");
+        info!("\nWaiting for content to read...\n");
         pipe.read_to_end(&mut buf)?;
 
         let buf_len = buf.len();
-        println!("Read {} bytes.", &buf_len);
+        info!(">> Read {} bytes.", &buf_len);
+        trace!("{:?}", &buf);
 
         let opcode = buf[0];
 
-        println!("Opcode: {}", &opcode);
+        debug!("Opcode: {}", &opcode);
 
         if opcode == 1 {
             let ba: BytesArray = (&buf[1..buf_len - 1]).into();
             let mut bytes = ba.into_iter();
             let toggle = buf[buf_len - 1] as usize;
 
-            println!("Calling PROVE");
+            info!("Generating <proof>");
 
             let result = prove(
                 bytes.next().unwrap().into(), // d
@@ -56,14 +90,16 @@ fn main() -> std::io::Result<()> {
 
             let data: Vec<u8> = result.unwrap().into();
 
-            println!("PROVE returned {} bytes", &data.len());
-
+            debug!("<proof> is: {} bytes", &data.len());
+            trace!("{:?}", &data);
+            info!("<< Write <proof> to named pipe.");
             pipe.write(&data)?;
         } else if opcode == 2 {
             let ba: BytesArray = (&buf[1..buf_len]).into();
-            let mut bytes = ba.into_iter();
 
-            println!("Calling VERIFY");
+            info!("Verify <proof>");
+
+            let mut bytes = ba.into_iter();
 
             let result = verify(
                 bytes.next().unwrap().into(), // proof
@@ -72,6 +108,13 @@ fn main() -> std::io::Result<()> {
                 bytes.next().unwrap().into(), // q
                 bytes.next().unwrap().into(), // z_img
             );
+
+            if result {
+                info!("Succeed.");
+            } else {
+                info!("Failed.");
+            }
+            info!("<< Write <result> to named pipe.");
 
             pipe.write(&[result as u8])?;
         }

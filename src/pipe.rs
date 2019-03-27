@@ -19,6 +19,8 @@ impl NamedPipe {
 
   pub fn connect(&mut self) {
     let path = self.path_as_string();
+    debug!("pipe at location: {:?}", &path);
+
     let filename = CString::new(path.as_str()).expect("CString::new failed");
     let ptr = filename.as_ptr();
 
