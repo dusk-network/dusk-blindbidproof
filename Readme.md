@@ -7,7 +7,7 @@ It uses a [custom, multithreaded version](https://gitlab.dusk.network/dusk-core/
 
 ![](docs/benchmarks.png)
 
-(*Lower is better*)
+(*On Intel® Core™ i7-8559U Processor, lower is better*)
 
 ## How to build
 
