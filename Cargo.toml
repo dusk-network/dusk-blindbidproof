@@ -18,8 +18,8 @@ log = "0.4.6"
 env_logger = "0.6.1"
 
 [dependencies.bulletproofs]
-path = "../bp"
-#branch = "master"
+git = "https://gitlab.dusk.network/dusk-core/bulletproofs"
+branch = "thread"
 features = ["yoloproofs"]
 
 [profile.release]
