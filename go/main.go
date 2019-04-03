@@ -1,54 +1,50 @@
-package main
+package blindbid
 
-// #cgo LDFLAGS: -L../target/release -lblindbid
-// #include "./libblindbid.h"
-import "C"
 import (
-	"crypto/rand"
-	"os"
+	ristretto "github.com/bwesterb/go-ristretto"
 )
 
-func main() {
-	d := genRandomBytes(32)
-	k := genRandomBytes(32)
-	y := genRandomBytes(32)
-	yInv := genRandomBytes(32)
-	q := genRandomBytes(32)
-	zImg := genRandomBytes(32)
-	seed := genRandomBytes(32)
+// func main() {
 
-	dPtr := sliceToPtr(d)
-	kPtr := sliceToPtr(k)
-	yPtr := sliceToPtr(y)
-	yInvPtr := sliceToPtr(yInv)
-	qPtr := sliceToPtr(q)
-	zImgPtr := sliceToPtr(zImg)
-	seedPtr := sliceToPtr(seed)
+// 	// amount in the bidding transaction
+// 	d := genRandScalar()
 
-	pubList := make([]byte, 0, 32*8)
+// 	dAsBytes := d.Bytes()
 
-	for i := 0; i < 8; i++ {
-		pubList = append(pubList, genRandomBytes(32)...)
-	}
+// 	d = bytesToScalar(dAsBytes)
 
-	pubListPtr := sliceToPtr(pubList)
-	cPubListLen := C.size_t(len(pubList))
+// 	// secret number
+// 	k := genRandScalar()
+// 	// seed from block
+// 	seed := genRandScalar()
 
-	C.prover(dPtr, kPtr, yPtr, yInvPtr, qPtr, zImgPtr, seedPtr, pubListPtr, cPubListLen)
+// 	// public list of bids
+// 	pubList := make([]ristretto.Scalar, 0, 5)
+// 	for i := 0; i < 5; i++ {
+// 		pubList = append(pubList, genRandScalar())
+// 	}
+
+// 	proof, qBytes, zBytes, pL := Prove(d, k, seed, pubList)
+
+// 	fmt.Printf("Score is %d \n", qBytes)
+// 	fmt.Printf("Z is %d \n", zBytes)
+// 	fmt.Printf("proof is %d \n", zBytes)
+
+// 	res := Verify(proof, seed.Bytes(), pL, qBytes, zBytes)
+// 	fmt.Println(res)
+// }
+
+func genRandScalar() ristretto.Scalar {
+	c := ristretto.Scalar{}
+	c.Rand()
+	return c
 }
 
-func sliceToPtr(data []byte) *C.uchar {
-	cData := C.CBytes(data)
-	cDataPtr := (*C.uchar)(cData)
-	return cDataPtr
-}
+func bytesToScalar(d []byte) ristretto.Scalar {
+	x := ristretto.Scalar{}
 
-func genRandomBytes(a int) []byte {
-	key := make([]byte, a)
-
-	_, err := rand.Read(key)
-	if err != nil {
-		os.Exit(1)
-	}
-	return key
+	var buf [32]byte
+	copy(buf[:], d[:])
+	x.SetBytes(&buf)
+	return x
 }
