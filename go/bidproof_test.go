@@ -1,4 +1,4 @@
-package blindbid
+package zkproof
 
 import (
 	"testing"
@@ -14,19 +14,16 @@ func TestProveVerify(t *testing.T) {
 	seed := genRandScalar()
 
 	// public list of bids
-	pubList := make([]ristretto.Scalar, 0, 5)
+	bidList := make([]ristretto.Scalar, 0, 5)
 	for i := 0; i < 5; i++ {
-		pubList = append(pubList, genRandScalar())
+		bidList = append(bidList, genRandScalar())
 	}
 
-	proof, qBytes, zBytes, pL := Prove(d, k, seed, pubList)
-	res := Verify(proof, seed.Bytes(), pL, qBytes, zBytes)
+	proof := Prove(d, k, seed, bidList)
+	res := proof.Verify(seed)
 	assert.Equal(t, true, res)
-	//}
 }
-
 func BenchmarkProveVerify(b *testing.B) {
-
 	b.ReportAllocs()
 
 	d := genRandScalar()
@@ -34,14 +31,20 @@ func BenchmarkProveVerify(b *testing.B) {
 	seed := genRandScalar()
 
 	// public list of bids
-	pubList := make([]ristretto.Scalar, 0, 5)
+	bidList := make([]ristretto.Scalar, 0, 5)
 	for i := 0; i < 5; i++ {
-		pubList = append(pubList, genRandScalar())
+		bidList = append(bidList, genRandScalar())
 	}
 	b.ResetTimer()
 	b.N = 20
 	for n := 0; n < b.N; n++ {
-		proof, qBytes, zBytes, pL := Prove(d, k, seed, pubList)
-		Verify(proof, seed.Bytes(), pL, qBytes, zBytes)
+		proof := Prove(d, k, seed, bidList)
+		proof.Verify(seed)
 	}
+}
+
+func genRandScalar() ristretto.Scalar {
+	c := ristretto.Scalar{}
+	c.Rand()
+	return c
 }

@@ -1,6 +1,15 @@
-package blindbid
+// Package zkproof contains the Go APIs to generate and verify
+// a zero-knownledge prove for the Dusk's Blind Bid.
+//
+// Under the hood is using named pipes for a fast IPC with the Blind Bid
+// process.
+//
+// A concrete implementation of the Blind Bid can be found here:
+// https://gitlab.dusk.network/dusk-core/blindbidproof
+package zkproof
 
 import (
+	"bufio"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -9,105 +18,108 @@ import (
 	ristretto "github.com/bwesterb/go-ristretto"
 )
 
+// ZkProof holds all of the returned values from a generated proof.
+type ZkProof struct {
+	Proof         []byte
+	Score         []byte
+	Z             []byte
+	BinaryBidList []byte
+}
+
 // The number of rounds or each mimc hash
 const mimcRounds = 90
 
 // constants used in MIMC
 var constants = genConstants()
 
-var pipePath = tempFilePath("pipe-channel")
+// Creates a new `NamedPipe` using a blocking FIFO named "pipe-channel" in the
+// OS' temporary folder
+var pipe = NewNamedPipe(tempFilePath("pipe-channel"))
 
-// Prove creates a zkproof using d,k, seed and pubList
-// This will be accessed by the consensus
-// This will return the proof as a byte slice
-func Prove(d, k, seed ristretto.Scalar, pubList []ristretto.Scalar) ([]byte, []byte, []byte, []byte) {
-	pipe := NewNamedPipe(pipePath)
+// Since the named pipe is blocking, we need a buffered writer
+var bufferedPipeWriter = bufio.NewWriter(&pipe)
 
+// Prove creates a zkproof using `d`, `k`, `seed` and `pubList`, and returns
+// a ZkProof data type.
+func Prove(d, k, seed ristretto.Scalar, bidList []ristretto.Scalar) ZkProof {
 	// generate intermediate values
 	q, x, y, yInv, z := prog(d, k, seed)
 
 	// shuffle x in slice
-	pubList, i := shuffle(x, pubList)
+	bidList, i := shuffle(x, bidList)
 
-	pL := make([]byte, 0, 32*len(pubList))
-	for i := 0; i < len(pubList); i++ {
-		pL = append(pL, pubList[i].Bytes()...)
+	bL := make([]byte, 0, 32*len(bidList))
+	for i := 0; i < len(bidList); i++ {
+		bL = append(bL, bidList[i].Bytes()...)
 	}
 
-	bytes := BytesArray{}
-
+	bw := NewBinWriter(bufferedPipeWriter)
 	// set opcode
-	bytes.WriteUint8(1) // Prove
+	bw.Write(uint8(1)) // Prove
 	// set payload
-	bytes.Write(d.Bytes())
-	bytes.Write(k.Bytes())
-	bytes.Write(y.Bytes())
-	bytes.Write(yInv.Bytes())
-	bytes.Write(q.Bytes())
-	bytes.Write(z.Bytes())
-	bytes.Write(seed.Bytes())
-	bytes.Write(pL)
-	bytes.WriteUint8(i)
+	bw.VarWrite(d.Bytes())
+	bw.VarWrite(k.Bytes())
+	bw.VarWrite(y.Bytes())
+	bw.VarWrite(yInv.Bytes())
+	bw.VarWrite(q.Bytes())
+	bw.VarWrite(z.Bytes())
+	bw.VarWrite(seed.Bytes())
+	bw.VarWrite(bL)
+	bw.Write(uint8(i))
 
-	// write to pipeline
-	if err := pipe.WriteBytes(bytes); err != nil {
+	// write to pipe
+	if err := bufferedPipeWriter.Flush(); err != nil {
 		panic(err)
 	}
 
-	// read the result
-	bytes, err := pipe.ReadBytes()
+	// read the result from the pipe
+	bytes, err := pipe.ReadAll()
 	if err != nil {
 		panic(err)
 	}
 
-	// result := C.prove(dPtr, kPtr, yPtr, yInvPtr, qPtr, zPtr, seedPtr, &pubListBuff, &constListBuff, index)
-
-	return bytes.Bytes(), q.Bytes(), z.Bytes(), pL
+	return ZkProof{
+		Proof:         bytes,
+		Score:         q.Bytes(),
+		Z:             z.Bytes(),
+		BinaryBidList: bL,
+	}
 }
 
-// Verify take a proof in byte format and returns true or false depending on whether
-// it is successful
-func Verify(proof, seed, pubList, q, zImg []byte) bool {
-	pipe := NewNamedPipe(pipePath)
-
-	bytes := BytesArray{}
-
+// Verify a ZkProof using the provided seed.
+// Returns `true` or `false` depending on whether it is successful.
+func (proof *ZkProof) Verify(seed ristretto.Scalar) bool {
+	bw := NewBinWriter(bufferedPipeWriter)
 	// set opcode
-	bytes.WriteUint8(2) // Verify
+	bw.Write(uint8(2)) // Verify
 	// set payload
-	bytes.Write(proof)
-	bytes.Write(seed)
-	bytes.Write(pubList)
-	bytes.Write(q)
-	bytes.Write(zImg)
+	bw.VarWrite(proof.Proof)
+	bw.VarWrite(seed.Bytes())
+	bw.VarWrite(proof.BinaryBidList)
+	bw.VarWrite(proof.Score)
+	bw.VarWrite(proof.Z)
 
 	// write to pipeline
-	if err := pipe.WriteBytes(bytes); err != nil {
+	if err := bufferedPipeWriter.Flush(); err != nil {
 		panic(err)
 	}
 
-	// read the result
-	bytes, err := pipe.ReadBytes()
+	bytes, err := pipe.ReadAll()
 	if err != nil {
 		panic(err)
 	}
 
-	return bytes.Bytes()[0] == 1
+	return bytes[0] == 1
 }
 
-// CalculateX calculates the blind bid X
-func CalculateX(d, k ristretto.Scalar) ristretto.Scalar {
-	zero := ristretto.Scalar{}
-	zero.SetZero()
-
-	m := mimcHash(k, zero)
-
+// CalculateX calculates the blind bid `X`.
+func CalculateX(d, m ristretto.Scalar) ristretto.Scalar {
 	x := mimcHash(d, m)
 	return x
 }
 
-// CalculateM calculates H(k)
-func CalculateM(d, k ristretto.Scalar) ristretto.Scalar {
+// CalculateM calculates `H(k)`.
+func CalculateM(k ristretto.Scalar) ristretto.Scalar {
 	zero := ristretto.Scalar{}
 	zero.SetZero()
 
@@ -115,14 +127,15 @@ func CalculateM(d, k ristretto.Scalar) ristretto.Scalar {
 	return m
 }
 
-//Shuffle will shuffle the x value in the slice
-// returning the index of the newly shuffled item and the slice
-func shuffle(x ristretto.Scalar, vals []ristretto.Scalar) ([]ristretto.Scalar, uint8) {
+// shuffle will shuffle the `x` in the slice given; returning the newly shuffled
+// slice, and the `x`'s index.
+func shuffle(x ristretto.Scalar, vals []ristretto.Scalar) (
+	[]ristretto.Scalar, uint8) {
 
 	var index uint8
 
 	// append x to slice
-	values := append(vals, x)
+	values := unique(append(vals, x))
 
 	r := rand.New(rand.NewSource(time.Now().Unix()))
 
@@ -137,8 +150,9 @@ func shuffle(x ristretto.Scalar, vals []ristretto.Scalar) ([]ristretto.Scalar, u
 	return ret, index
 }
 
-// genConstants will generate the constants for
-// MIMC rounds
+// genConstants will generate the constants for MIMC rounds.
+// The `seed` is the same used by the Blind Bid concrete implementation, in
+// order to have matching constants.
 func genConstants() []ristretto.Scalar {
 	constants := make([]ristretto.Scalar, mimcRounds)
 	var seed = []byte("blind bid")
@@ -152,7 +166,12 @@ func genConstants() []ristretto.Scalar {
 	return constants
 }
 
-func prog(d, k, seed ristretto.Scalar) (ristretto.Scalar, ristretto.Scalar, ristretto.Scalar, ristretto.Scalar, ristretto.Scalar) {
+func prog(d, k, seed ristretto.Scalar) (
+	ristretto.Scalar,
+	ristretto.Scalar,
+	ristretto.Scalar,
+	ristretto.Scalar,
+	ristretto.Scalar) {
 
 	zero := ristretto.Scalar{}
 	zero.SetZero()
@@ -205,14 +224,20 @@ func mimcHash(left, right ristretto.Scalar) ristretto.Scalar {
 
 }
 
-func constantsToBytes(cconstants []ristretto.Scalar) []byte {
-	c := make([]byte, 0, 90*32)
-	for i := 0; i < len(constants); i++ {
-		c = append(c, constants[i].Bytes()...)
-	}
-	return c
-}
-
 func tempFilePath(name string) string {
 	return filepath.Join(os.TempDir(), name)
+}
+
+func unique(s []ristretto.Scalar) []ristretto.Scalar {
+	seen := make(map[ristretto.Scalar]struct{}, len(s))
+	j := 0
+	for _, v := range s {
+		if _, ok := seen[v]; ok {
+			continue
+		}
+		seen[v] = struct{}{}
+		s[j] = v
+		j++
+	}
+	return s[:j]
 }
