@@ -36,9 +36,6 @@ var constants = genConstants()
 // OS' temporary folder
 var pipe = NewNamedPipe(tempFilePath("pipe-channel"))
 
-// Since the named pipe is blocking, we need a buffered writer
-var bufferedPipeWriter = bufio.NewWriter(&pipe)
-
 // Prove creates a zkproof using `d`, `k`, `seed` and `pubList`, and returns
 // a ZkProof data type.
 func Prove(d, k, seed ristretto.Scalar, bidList []ristretto.Scalar) ZkProof {
@@ -53,6 +50,8 @@ func Prove(d, k, seed ristretto.Scalar, bidList []ristretto.Scalar) ZkProof {
 		bL = append(bL, bidList[i].Bytes()...)
 	}
 
+	// Since the named pipe is blocking, we need a buffered writer
+	bufferedPipeWriter := bufio.NewWriter(&pipe)
 	bw := NewBinWriter(bufferedPipeWriter)
 	// set opcode
 	bw.Write(uint8(1)) // Prove
@@ -89,6 +88,7 @@ func Prove(d, k, seed ristretto.Scalar, bidList []ristretto.Scalar) ZkProof {
 // Verify a ZkProof using the provided seed.
 // Returns `true` or `false` depending on whether it is successful.
 func (proof *ZkProof) Verify(seed ristretto.Scalar) bool {
+	bufferedPipeWriter := bufio.NewWriter(&pipe)
 	bw := NewBinWriter(bufferedPipeWriter)
 	// set opcode
 	bw.Write(uint8(2)) // Verify
