@@ -52,7 +52,7 @@ pub fn prove(
     let mut transcript = Transcript::new(b"BlindBidProofGadget");
 
     // 1. Create a prover
-    let mut prover = Prover::new(&bp_gens, &pc_gens, &mut transcript);
+    let mut prover = Prover::new(&pc_gens, &mut transcript);
 
     // 2. Commit high-level variables
     let mut blinding_rng = rand::thread_rng();
@@ -89,7 +89,7 @@ pub fn prove(
     );
 
     // 4. Make a proof
-    let proof = prover.prove()?;
+    let proof = prover.prove(&bp_gens)?;
 
     Ok((proof, commitments, t_c))
 }
@@ -111,7 +111,7 @@ pub fn verify(
     let mut transcript = Transcript::new(b"BlindBidProofGadget");
 
     // 1. Create a verifier
-    let mut verifier = Verifier::new(&bp_gens, &pc_gens, &mut transcript);
+    let mut verifier = Verifier::new(&mut transcript);
 
     // 2. Commit high-level variables
     let vars: Vec<_> = commitments.iter().map(|v| verifier.commit(*v)).collect();
@@ -140,6 +140,6 @@ pub fn verify(
 
     // 4. Verify the proof
     verifier
-        .verify(&proof)
+        .verify(&proof, &pc_gens, &bp_gens)
         .map_err(|_| R1CSError::VerificationError)
 }

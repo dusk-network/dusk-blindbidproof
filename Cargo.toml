@@ -18,8 +18,8 @@ log = "0.4.6"
 env_logger = "0.6.1"
 
 [dependencies.bulletproofs]
-git = "https://gitlab.dusk.network/dusk-core/bulletproofs"
-branch = "thread"
+git = "https://github.com/dalek-cryptography/bulletproofs"
+branch = "develop"
 features = ["yoloproofs"]
 
 [profile.release]
