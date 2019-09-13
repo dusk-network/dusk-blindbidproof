@@ -1,0 +1,158 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="API documentation for the Rust `bulletproofs` crate."><meta name="keywords" content="rust, rustlang, rust-lang, bulletproofs"><title>bulletproofs - Rust</title><link rel="stylesheet" type="text/css" href="../normalize.css"><link rel="stylesheet" type="text/css" href="../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../dark.css"><link rel="stylesheet" type="text/css" href="../light.css" id="themeStyle"><script src="../storage.js"></script><noscript><link rel="stylesheet" href="../noscript.css"></noscript><link rel="shortcut icon" href="../favicon.ico"><style type="text/css">#crate-search{background-image:url("../down-arrow.svg");}</style></head><body class="rustdoc mod"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu">&#9776;</div><a href='../bulletproofs/index.html'><div class='logo-container'><img src='https://doc.dalek.rs/assets/dalek-logo-clear.png' alt='logo'></div></a><p class='location'>Crate bulletproofs</p><div class="sidebar-elems"><a id='all-types' href='all.html'><p>See all bulletproofs's items</p></a><div class="block items"><ul><li><a href="#modules">Modules</a></li><li><a href="#structs">Structs</a></li><li><a href="#enums">Enums</a></li></ul></div><p class='location'></p><script>window.sidebarCurrent = {name: 'bulletproofs', ty: 'mod', relpath: '../'};</script></div></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!"><img src="../brush.svg" width="18" alt="Pick another theme!"></button><div id="theme-choices"></div></div><script src="../theme.js"></script><nav class="sub"><form class="search-form js-only"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><a id="settings-menu" href="../settings.html"><img src="../wheel.svg" width="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><h1 class='fqn'><span class='out-of-band'><span id='render-detail'><a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">[<span class='inner'>&#x2212;</span>]</a></span><a class='srclink' href='../src/bulletproofs/lib.rs.html#1-59' title='goto source code'>[src]</a></span><span class='in-band'>Crate <a class="mod" href=''>bulletproofs</a></span></h1><div class='docblock'><h1 id="bulletproofs" class="section-header"><a href="#bulletproofs">Bulletproofs</a></h1>
+<p><img
+ width="100%"
+ src="https://doc.dalek.rs/assets/bulletproofs-rangeproof.png"
+/></p>
+<p>The fastest <a href="https://crypto.stanford.edu/bulletproofs/">Bulletproofs</a> implementation ever, featuring
+single and aggregated range proofs, strongly-typed multiparty
+computation, and a programmable constraint system API for proving
+arbitrary statements (under development).</p>
+<p>This library implements Bulletproofs using <a href="https://ristretto.group">Ristretto</a>,
+using the <code>ristretto255</code> implementation in
+<a href="https://doc.dalek.rs/curve25519_dalek/index.html"><code>curve25519-dalek</code></a>.  When using the <a href="https://medium.com/@hdevalence/accelerating-edwards-curve-arithmetic-with-parallel-formulas-ac12cf5015be">parallel
+formulas</a> in the <code>curve25519-dalek</code> AVX2 backend, it
+can verify 64-bit rangeproofs <strong>approximately twice as fast</strong> as the
+original <code>libsecp256k1</code>-based Bulletproofs implementation.</p>
+<p>This library provides implementations of:</p>
+<ul>
+<li>
+<p>Single-party proofs of single or multiple ranges, using the
+aggregated rangeproof construction;</p>
+</li>
+<li>
+<p>Online multi-party computation for rangeproof aggregation between
+multiple parties, using <a href="https://blog.chain.com/bulletproof-multi-party-computation-in-rust-with-session-types-b3da6e928d5d">session types</a> to
+statically enforce correct protocol flow;</p>
+</li>
+<li>
+<p>A programmable constraint system API for expressing rank-1
+constraint systems, and proving and verifying proofs of arbitrary
+statements (unstable, under development with the <code>yoloproofs</code> feature);</p>
+</li>
+<li>
+<p>Online multi-party computation for aggregated constraint system proofs
+(planned future work).</p>
+</li>
+</ul>
+<p>These proofs are implemented using <a href="https://doc.dalek.rs/merlin/index.html">Merlin transcripts</a>,
+allowing them to be arbitrarily composed with other proofs without
+implementation changes.</p>
+<p>The development roadmap can be found in the
+<a href="https://github.com/dalek-cryptography/bulletproofs/milestones">Milestones</a> section of the <a href="https://github.com/dalek-cryptography/bulletproofs/">Github repo</a>.</p>
+<p>The constraint system API is provided <strong>FOR EXPERIMENTS ONLY</strong>, and must be
+enabled by specifying the <code>yoloproofs</code> feature.  It is not covered by semver
+compatibility and is <strong>SUBJECT TO CHANGE WITHOUT NOTICE</strong>.</p>
+<p>Currently, the <code>yoloproofs</code> feature is disabled in the published version of the
+crate, so it can only be used by specifying a git dependency on the <code>develop</code>
+branch.  This means that it is not possible to publish a crate using the R1CS
+API, because it is <strong>FOR EXPERIMENTS ONLY</strong>.</p>
+<h2 id="documentation" class="section-header"><a href="#documentation">Documentation</a></h2>
+<p>The user-facing documentation for this functionality can be <a href="https://doc.dalek.rs/bulletproofs/index.html">found
+here</a>.  In addition, the library <em>also</em> contains
+extensive notes on how Bulletproofs work.  These notes can be found in
+the library's <a href="https://doc-internal.dalek.rs/bulletproofs/index.html">internal documentation</a>:</p>
+<ul>
+<li>how <a href="https://doc-internal.dalek.rs/bulletproofs/notes/index.html">Bulletproofs work</a>;</li>
+<li>how <a href="https://doc-internal.dalek.rs/bulletproofs/range_proof/index.html">the range proof protocol works</a>;</li>
+<li>how <a href="https://doc-internal.dalek.rs/bulletproofs/inner_product_proof/index.html">the inner product proof protocol works</a>;</li>
+<li>how <a href="https://doc-internal.dalek.rs/bulletproofs/notes/index.html#aggregated-range-proof">the aggregation protocol works</a>;</li>
+<li>how the Bulletproof constraint system proofs work (under development);</li>
+<li>how the constraint system reduction works (under development);</li>
+<li>how the aggregated constraint system proofs work (future work).</li>
+</ul>
+<h2 id="comparative-performance" class="section-header"><a href="#comparative-performance">Comparative Performance</a></h2>
+<p>The following table gives comparative timings for proving and verification of a
+64-bit rangeproof on an Intel Skylake-X i7-7800X (@3.5GHz, Turbo Boost
+disabled).  Times are in microseconds (lower is better), with the relative
+speed compared to the fastest implementation.</p>
+<table><thead><tr><th>Implementation</th><th>Group</th><th align="right">Proving (μs)</th><th align="right">rel</th><th align="right">Verification (μs)</th><th align="right">rel</th></tr></thead><tbody>
+<tr><td>ours (avx2)</td><td>ristretto255</td><td align="right">7300</td><td align="right"><strong>1.00x</strong></td><td align="right">1040</td><td align="right"><strong>1.00x</strong></td></tr>
+<tr><td>ours (u64)</td><td>ristretto255</td><td align="right">11300</td><td align="right"><strong>1.54x</strong></td><td align="right">1490</td><td align="right"><strong>1.43x</strong></td></tr>
+<tr><td>libsecp+endo</td><td>secp256k1</td><td align="right">14300</td><td align="right"><strong>1.96x</strong></td><td align="right">1900</td><td align="right"><strong>1.83x</strong></td></tr>
+<tr><td>libsecp-endo</td><td>secp256k1</td><td align="right">16800</td><td align="right"><strong>2.30x</strong></td><td align="right">2080</td><td align="right"><strong>2.00x</strong></td></tr>
+<tr><td>Monero</td><td>ed25519 (unsafe)</td><td align="right">53300</td><td align="right"><strong>7.30x</strong></td><td align="right">4810</td><td align="right"><strong>4.63x</strong></td></tr>
+</tbody></table>
+<p>Use of the <code>curve25519-dalek</code> IFMA backend gives another 1.5x speedup on a
+Cannonlake i3-8121U, increasing the verification speedup <strong>3x</strong> over libsecp
+and <strong>7x</strong> over Monero, but these processors are not yet generally available.</p>
+<p>This crate also contains other benchmarks; see the <em>Tests and Benchmarks</em>
+section below for details on how to run them all.</p>
+<h2 id="example" class="section-header"><a href="#example">Example</a></h2>
+<p>The following example shows how to create and verify a 32-bit rangeproof.</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered">
+<span class="comment">// Generators for Pedersen commitments.  These can be selected</span>
+<span class="comment">// independently of the Bulletproofs generators.</span>
+<span class="kw">let</span> <span class="ident">pc_gens</span> <span class="op">=</span> <span class="ident">PedersenGens</span>::<span class="ident">default</span>();
+
+<span class="comment">// Generators for Bulletproofs, valid for proofs up to bitsize 64</span>
+<span class="comment">// and aggregation size up to 1.</span>
+<span class="kw">let</span> <span class="ident">bp_gens</span> <span class="op">=</span> <span class="ident">BulletproofGens</span>::<span class="ident">new</span>(<span class="number">64</span>, <span class="number">1</span>);
+
+<span class="comment">// A secret value we want to prove lies in the range [0, 2^32)</span>
+<span class="kw">let</span> <span class="ident">secret_value</span> <span class="op">=</span> <span class="number">1037578891u64</span>;
+
+<span class="comment">// The API takes a blinding factor for the commitment.</span>
+<span class="kw">let</span> <span class="ident">blinding</span> <span class="op">=</span> <span class="ident">Scalar</span>::<span class="ident">random</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">thread_rng</span>());
+
+<span class="comment">// The proof can be chained to an existing transcript.</span>
+<span class="comment">// Here we create a transcript with a doctest domain separator.</span>
+<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">prover_transcript</span> <span class="op">=</span> <span class="ident">Transcript</span>::<span class="ident">new</span>(<span class="string">b&quot;doctest example&quot;</span>);
+
+<span class="comment">// Create a 32-bit rangeproof.</span>
+<span class="kw">let</span> (<span class="ident">proof</span>, <span class="ident">committed_value</span>) <span class="op">=</span> <span class="ident">RangeProof</span>::<span class="ident">prove_single</span>(
+    <span class="kw-2">&amp;</span><span class="ident">bp_gens</span>,
+    <span class="kw-2">&amp;</span><span class="ident">pc_gens</span>,
+    <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">prover_transcript</span>,
+    <span class="ident">secret_value</span>,
+    <span class="kw-2">&amp;</span><span class="ident">blinding</span>,
+    <span class="number">32</span>,
+).<span class="ident">expect</span>(<span class="string">&quot;A real program could handle errors&quot;</span>);
+
+<span class="comment">// Verification requires a transcript with identical initial state:</span>
+<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">verifier_transcript</span> <span class="op">=</span> <span class="ident">Transcript</span>::<span class="ident">new</span>(<span class="string">b&quot;doctest example&quot;</span>);
+<span class="macro">assert</span><span class="macro">!</span>(
+    <span class="ident">proof</span>
+        .<span class="ident">verify_single</span>(<span class="kw-2">&amp;</span><span class="ident">bp_gens</span>, <span class="kw-2">&amp;</span><span class="ident">pc_gens</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">verifier_transcript</span>, <span class="kw-2">&amp;</span><span class="ident">committed_value</span>, <span class="number">32</span>)
+        .<span class="ident">is_ok</span>()
+);</pre></div>
+<h2 id="building" class="section-header"><a href="#building">Building</a></h2>
+<p>To compile successfully, you will need to have nightly Rust installed, rather than stable.</p>
+<p>You can install nightly Rust with rustup:</p>
+<pre><code class="language-text">rustup default nightly
+</code></pre>
+<h2 id="tests-and-benchmarks" class="section-header"><a href="#tests-and-benchmarks">Tests and Benchmarks</a></h2>
+<p>Run tests with <code>cargo test</code>.  Run benchmarks with <code>cargo bench</code>.  This crate
+uses <a href="https://github.com/japaric/criterion.rs">criterion.rs</a> for benchmarks. </p>
+<h2 id="features" class="section-header"><a href="#features">Features</a></h2>
+<p>The <code>yoloproofs</code> feature enables support for rank-1 constraint system proofs.
+It is <strong>UNSTABLE AND UNSUITABLE FOR DEPLOYMENT</strong>, and <strong>PROVIDED FOR TESTING
+ONLY</strong>.</p>
+<p>The <code>avx2_backend</code> feature enables <code>curve25519-dalek</code>'s AVX2 backend,
+which implements curve arithmetic using <a href="https://medium.com/@hdevalence/accelerating-edwards-curve-arithmetic-with-parallel-formulas-ac12cf5015be">parallel
+formulas</a>.  To use it for Bulletproofs, the
+<code>target_cpu</code> must support AVX2:</p>
+<pre><code class="language-text">RUSTFLAGS=&quot;-C target_cpu=skylake&quot; cargo bench --features &quot;avx2_backend&quot;
+</code></pre>
+<p>Skylake-X CPUs have double the AVX2 registers. To use them, try</p>
+<pre><code class="language-text">RUSTFLAGS=&quot;-C target_cpu=skylake-avx512&quot; cargo bench --features &quot;avx2_backend&quot;
+</code></pre>
+<p>This prevents spills in the AVX2 parallel field multiplication code, but causes
+worse code generation elsewhere ¯\_(ツ)_/¯</p>
+<h2 id="about" class="section-header"><a href="#about">About</a></h2>
+<p>This is a research project sponsored by <a href="https://interstellar.com/">Interstellar</a>,
+developed by Henry de Valence, Cathie Yun, and Oleg Andreev.</p>
+</div><h2 id='modules' class='section-header'><a href="#modules">Modules</a></h2>
+<table><tr class='module-item'><td><a class="mod" href="r1cs/index.html" title='bulletproofs::r1cs mod'>r1cs</a></td><td class='docblock-short'><p>The rank-1 constraint system API for programmatically defining constraint systems.</p>
+</td></tr><tr class='module-item'><td><a class="mod" href="range_proof_mpc/index.html" title='bulletproofs::range_proof_mpc mod'>range_proof_mpc</a></td><td class='docblock-short'><p>The <code>range_proof_mpc</code> module contains the API for performing the aggregated multiparty computation protocol for joint range proof proving.</p>
+</td></tr></table><h2 id='structs' class='section-header'><a href="#structs">Structs</a></h2>
+<table><tr class='module-item'><td><a class="struct" href="struct.BulletproofGens.html" title='bulletproofs::BulletproofGens struct'>BulletproofGens</a></td><td class='docblock-short'><p>The <code>BulletproofGens</code> struct contains all the generators needed
+for aggregating up to <code>m</code> range proofs of up to <code>n</code> bits each.</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.BulletproofGensShare.html" title='bulletproofs::BulletproofGensShare struct'>BulletproofGensShare</a></td><td class='docblock-short'><p>Represents a view of the generators used by a specific party in an
+aggregated proof.</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.PedersenGens.html" title='bulletproofs::PedersenGens struct'>PedersenGens</a></td><td class='docblock-short'><p>Represents a pair of base points for Pedersen commitments.</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.RangeProof.html" title='bulletproofs::RangeProof struct'>RangeProof</a></td><td class='docblock-short'><p>The <code>RangeProof</code> struct represents a proof that one or more values
+are in a range.</p>
+</td></tr></table><h2 id='enums' class='section-header'><a href="#enums">Enums</a></h2>
+<table><tr class='module-item'><td><a class="enum" href="enum.ProofError.html" title='bulletproofs::ProofError enum'>ProofError</a></td><td class='docblock-short'><p>Represents an error in proof creation, verification, or parsing.</p>
+</td></tr></table></section><section id="search" class="content hidden"></section><section class="footer"></section><aside id="help" class="hidden"><div><h1 class="hidden">Help</h1><div class="shortcuts"><h2>Keyboard Shortcuts</h2><dl><dt><kbd>?</kbd></dt><dd>Show this help dialog</dd><dt><kbd>S</kbd></dt><dd>Focus the search field</dd><dt><kbd>↑</kbd></dt><dd>Move up in search results</dd><dt><kbd>↓</kbd></dt><dd>Move down in search results</dd><dt><kbd>↹</kbd></dt><dd>Switch tab</dd><dt><kbd>&#9166;</kbd></dt><dd>Go to active search result</dd><dt><kbd>+</kbd></dt><dd>Expand all sections</dd><dt><kbd>-</kbd></dt><dd>Collapse all sections</dd></dl></div><div class="infos"><h2>Search Tricks</h2><p>Prefix searches with a type followed by a colon (e.g., <code>fn:</code>) to restrict the search to a given type.</p><p>Accepted types are: <code>fn</code>, <code>mod</code>, <code>struct</code>, <code>enum</code>, <code>trait</code>, <code>type</code>, <code>macro</code>, and <code>const</code>.</p><p>Search functions by type signature (e.g., <code>vec -> usize</code> or <code>* -> vec</code>)</p><p>Search multiple things at once by splitting your query with comma (e.g., <code>str,u8</code> or <code>String,struct:Vec,test</code>)</p></div></div></aside><script>window.rootPath = "../";window.currentCrate = "bulletproofs";</script><script src="../aliases.js"></script><script src="../main.js"></script><script defer src="../search-index.js"></script></body></html>
