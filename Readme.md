@@ -1,9 +1,14 @@
+# Dusk Blind Bid Proof
+
+[![Build Status](https://travis-ci.com/dusk-network/dusk-blindbidproof.svg?token=czzGwcZEd8hUsCLG3xJC&branch=master)](https://travis-ci.com/dusk-network/dusk-blindbidproof)
+[![Repository](https://dusk-network.github.io/dusk-blindbidproof/repo-badge.svg)](https://github.com/dusk-network/dusk-blindbidproof)
+[![Documentation](https://dusk-network.github.io/dusk-blindbidproof/badge.svg)](https://dusk-network.github.io/dusk-blindbidproof/dusk_blindbidproof/index.html)
 
 This tool Implements the [Blind Bid Protocol](docs/blind-bid-protocol.pdf), and includes a zkproof prover and verifier that can be used in a separate process from any other languages and platform that support *nix named pipes.
 
 The named pipes are used for better performance in interprocess comunication.
 
-It uses a [custom, multithreaded version](https://gitlab.dusk.network/dusk-core/bulletproofs/tree/thread) of [dalek's bulletproofs](https://github.com/dalek-cryptography/bulletproofs/) in order to make the "fastest Bulletproofs implementation" even more faster:
+It uses a [custom, multithreaded version](https://gitlab.dusk.network/dusk-core/bulletproofs/tree/thread) of [dalek's bulletproofs](https://github.com/dalek-cryptography/bulletproofs/) in order to make the "fastest Bulletproofs implementation" even faster:
 
 ![](docs/benchmarks.png)
 
