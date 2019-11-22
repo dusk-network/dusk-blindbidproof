@@ -58,7 +58,7 @@ pub fn prove(
     let mut blinding_rng = rand::thread_rng();
 
     let (commitments, vars): (Vec<_>, Vec<_>) = [d, k, y, y_inv]
-        .into_iter()
+        .iter()
         .map(|v| prover.commit(*v, Scalar::random(&mut blinding_rng)))
         .unzip();
 

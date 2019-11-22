@@ -29,7 +29,7 @@ impl NamedPipe {
 }
 
 impl<'a> Read for NamedPipe {
-    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<(usize)> {
+    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
         let path = self.path_as_string();
         let mut f = OpenOptions::new()
             .read(true)
@@ -49,7 +49,7 @@ impl<'a> Read for NamedPipe {
 }
 
 impl<'a> Write for NamedPipe {
-    fn write(&mut self, buf: &[u8]) -> std::io::Result<(usize)> {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
         let path = self.path_as_string();
         let mut f = OpenOptions::new()
             .read(false)
