@@ -48,7 +48,7 @@ version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
-name = "blindbid"
+name = "blindbidproof"
 version = "0.1.0"
 dependencies = [
  "bulletproofs 1.0.4 (git+https://github.com/dalek-cryptography/bulletproofs?branch=develop)",

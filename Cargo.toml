@@ -1,5 +1,5 @@
 [package]
-name = "blindbid"
+name = "blindbidproof"
 version = "0.1.0"
 authors = ["kev <kevtheappdev@gmail.com>", "zer0 <matteo@dusk.network>"]
 edition = "2018"

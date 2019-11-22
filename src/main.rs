@@ -1,14 +1,7 @@
 #[macro_use]
-extern crate lazy_static;
-#[macro_use]
 extern crate log;
 
-mod blindbid;
-mod buffer;
-mod gadgets;
-mod pipe;
-
-use buffer::BytesArray;
+use blindbidproof::{blindbid, buffer, pipe};
 use curve25519_dalek::scalar::Scalar;
 use pipe::NamedPipe;
 use std::env;
@@ -70,7 +63,7 @@ fn main() -> std::io::Result<()> {
         debug!("Opcode: {}", &opcode);
 
         if opcode == 1 {
-            let ba: BytesArray = (&buf[1..buf_len - 1]).into();
+            let ba: buffer::BytesArray = (&buf[1..buf_len - 1]).into();
             let mut bytes = ba.into_iter();
             let toggle = buf[buf_len - 1] as usize;
 
@@ -95,7 +88,7 @@ fn main() -> std::io::Result<()> {
             info!("<< Write <proof> to named pipe.");
             pipe.write(&data)?;
         } else if opcode == 2 {
-            let ba: BytesArray = (&buf[1..buf_len]).into();
+            let ba: buffer::BytesArray = (&buf[1..buf_len]).into();
 
             info!("Verify <proof>");
 
@@ -133,10 +126,10 @@ fn prove(
     seed: Scalar,
     pub_list: Vec<Scalar>,
     toggle: usize,
-) -> Option<BytesArray> {
+) -> Option<buffer::BytesArray> {
     match blindbid::prove(d, k, y, y_inv, q, z_img, seed, pub_list, toggle) {
         Ok((proof, commitments, t_c)) => {
-            let mut bytes: BytesArray = BytesArray::new();
+            let mut bytes: buffer::BytesArray = buffer::BytesArray::new();
 
             bytes.push(proof.into());
             bytes.push(commitments.into());
@@ -149,7 +142,7 @@ fn prove(
 }
 
 fn verify(
-    bytes: BytesArray,
+    bytes: buffer::BytesArray,
     seed: Scalar,
     pub_list: Vec<Scalar>,
     q: Scalar,
