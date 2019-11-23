@@ -1,10 +1,3 @@
-extern crate bulletproofs;
-extern crate core;
-extern crate curve25519_dalek;
-extern crate merlin;
-extern crate rand;
-extern crate subtle;
-
 use bulletproofs::r1cs::{ConstraintSystem, LinearCombination, Variable};
 use curve25519_dalek::scalar::Scalar;
 
