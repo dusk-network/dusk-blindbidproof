@@ -1,7 +1,7 @@
 use std::env;
 use std::io::Write;
 
-use blindbidproof::MainFuture;
+use dusk_blindbidproof::MainFuture;
 
 use chrono::Local;
 use dusk_uds::UnixDomainSocket;
@@ -39,5 +39,7 @@ fn main() {
     let mut uds = env::temp_dir();
     uds.push("dusk-uds-blindbid");
 
-    UnixDomainSocket::new(uds, None, MainFuture::default());
+    UnixDomainSocket::new(uds, None, MainFuture::default())
+        .bind()
+        .unwrap();
 }
