@@ -11,9 +11,9 @@ use curve25519_dalek::ristretto::CompressedRistretto;
 use curve25519_dalek::scalar::Scalar;
 use dusk_tlv::{TlvReader, TlvWriter};
 use rand::thread_rng;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct Proof {
     pub proof: R1CSProof,
     pub commitments: Vec<CompressedRistretto>,
@@ -42,7 +42,7 @@ impl Proof {
         z_img: Scalar,
         seed: Scalar,
         pub_list: Vec<Scalar>,
-        toggle: usize,
+        toggle: u64,
     ) -> Result<Self, Error> {
         let (pc_gens, bp_gens, mut transcript) = generate_cs_transcript();
 
@@ -60,7 +60,7 @@ impl Proof {
         let (t_c, t_v): (Vec<_>, Vec<_>) = (0..pub_list.len())
             .map(|x| {
                 prover.commit(
-                    Scalar::from((x == toggle) as u8),
+                    Scalar::from((x as u64 == toggle) as u8),
                     Scalar::random(&mut thread_rng()),
                 )
             })
@@ -89,29 +89,27 @@ impl Proof {
         Ok(Proof::new(proof, commitments, t_c))
     }
 
-    pub fn try_from_reader_variables<R: Read>(mut reader: R) -> Result<Self, Error> {
-        let mut scalars = TlvReader::new(&mut reader).map(|b| {
-            b.map_err(|e| Error::from(e)).and_then(|b| {
-                bincode::deserialize::<Scalar>(b.as_slice()).map_err(|e| Error::from(e))
-            })
-        });
-
-        let d = scalars.next().ok_or(Error::UnexpectedEof)??;
-        let k = scalars.next().ok_or(Error::UnexpectedEof)??;
-        let y = scalars.next().ok_or(Error::UnexpectedEof)??;
-        let y_inv = scalars.next().ok_or(Error::UnexpectedEof)??;
-        let q = scalars.next().ok_or(Error::UnexpectedEof)??;
-        let z_img = scalars.next().ok_or(Error::UnexpectedEof)??;
-        let seed = scalars.next().ok_or(Error::UnexpectedEof)??;
-
+    /// Perform the deserialization of a request.
+    ///
+    /// Currently the recommended method from TlvReaderis read_list instead of standard list
+    /// deserialization
+    pub fn try_from_reader_variables<R: Read>(reader: R) -> Result<Self, Error> {
         let mut reader = TlvReader::new(reader);
+
+        let d = Deserialize::deserialize(&mut reader)?;
+        let k = Deserialize::deserialize(&mut reader)?;
+        let y = Deserialize::deserialize(&mut reader)?;
+        let y_inv = Deserialize::deserialize(&mut reader)?;
+        let q = Deserialize::deserialize(&mut reader)?;
+        let z_img = Deserialize::deserialize(&mut reader)?;
+        let seed = Deserialize::deserialize(&mut reader)?;
 
         let mut pub_list = vec![];
         for bytes in reader.read_list::<Vec<u8>>()? {
             pub_list.push(bincode::deserialize::<Scalar>(bytes.as_slice())?);
         }
 
-        let toggle = reader.read_usize()?;
+        let toggle = Deserialize::deserialize(&mut reader)?;
 
         Proof::prove(d, k, y, y_inv, q, z_img, seed, pub_list, toggle)
     }

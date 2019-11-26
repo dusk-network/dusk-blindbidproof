@@ -4,6 +4,7 @@ use std::io::Error as IoError;
 
 use bincode::Error as BincodeError;
 use bulletproofs::r1cs::R1CSError;
+use dusk_tlv::Error as TlvError;
 
 macro_rules! from_error {
     ($t:ty, $id:ident) => {
@@ -21,6 +22,7 @@ pub enum Error {
     Io(IoError),
     Other(String),
     R1CS(R1CSError),
+    Tlv(TlvError),
     UnexpectedEof,
 }
 
@@ -31,6 +33,7 @@ impl fmt::Display for Error {
             Error::Io(e) => write!(f, "{}", e),
             Error::Other(s) => write!(f, "{}", s),
             Error::R1CS(e) => write!(f, "{}", e),
+            Error::Tlv(e) => write!(f, "{}", e),
             Error::UnexpectedEof => write!(f, "Unexpected end of file"),
         }
     }
@@ -41,6 +44,7 @@ impl StdError for Error {
         match self {
             Error::Bincode(e) => Some(e),
             Error::Io(e) => Some(e),
+            Error::Tlv(e) => Some(e),
             _ => None,
         }
     }
@@ -49,3 +53,4 @@ impl StdError for Error {
 from_error!(BincodeError, Bincode);
 from_error!(IoError, Io);
 from_error!(R1CSError, R1CS);
+from_error!(TlvError, Tlv);
