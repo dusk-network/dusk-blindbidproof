@@ -4,19 +4,22 @@ use crate::Error;
 
 use std::convert::TryInto;
 use std::future::Future;
-use std::io::{Read, Write};
+use std::io::{self, Write};
 use std::os::unix::net::UnixStream;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
-use dusk_tlv::TlvWriter;
+use dusk_tlv::{TlvReader, TlvWriter};
 use dusk_uds::{Message, TaskProvider};
 
 macro_rules! try_result_future {
     ($e:expr) => {
         match $e {
             Ok(a) => a,
-            Err(_) => return Poll::Ready(Message::Error),
+            Err(e) => {
+                error!("Error resolving the request: {}", e);
+                return Poll::Ready(Message::Error);
+            }
         }
     };
 }
@@ -24,8 +27,14 @@ macro_rules! try_result_future {
 macro_rules! try_poll {
     ($e:expr, $c:expr) => {
         match Pin::new(&mut $e).poll($c) {
-            Poll::Ready(a) => a,
-            Poll::Pending => return Poll::Pending,
+            Poll::Ready(a) => {
+                trace!("Request resolved");
+                a
+            }
+            Poll::Pending => {
+                trace!("Pending request discarded");
+                return Poll::Pending;
+            }
         }
     };
 }
@@ -58,14 +67,22 @@ impl Future for MainFuture {
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
         match &mut self.socket {
             Some(s) => {
-                let mut opcode = [0x00u8];
-                try_result_future!(s.read_exact(&mut opcode));
+                let mut reader = TlvReader::new(s);
+                // Fetch the full request
+                let request = reader.next().transpose();
+                let request = try_result_future!(request);
+                let request = request.ok_or(Error::Io(io::Error::new(
+                    io::ErrorKind::UnexpectedEof,
+                    "The request was not provided",
+                )));
+                let request = try_result_future!(request);
+                let s = reader.into_inner();
 
-                let opcode = opcode[0];
+                let opcode = request[0];
 
                 // Proof
                 if opcode == 1 {
-                    let proof = try_poll!(ProveFuture::new(&mut (*s)), cx);
+                    let proof = try_poll!(ProveFuture::new(&request[1..]), cx);
                     let proof = try_result_future!(proof);
                     let proof: Vec<u8> = try_result_future!(proof.try_into());
 
@@ -75,7 +92,7 @@ impl Future for MainFuture {
                     Poll::Ready(Message::Success)
                 // Verify
                 } else if opcode == 2 {
-                    let verify = try_poll!(VerifyFuture::new(&mut (*s)), cx).is_ok();
+                    let verify = try_poll!(VerifyFuture::new(&request[1..]), cx).is_ok();
                     let verify = if verify { 0x01u8 } else { 0x00u8 };
 
                     let mut writer = TlvWriter::new(s);

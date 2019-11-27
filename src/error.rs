@@ -1,6 +1,6 @@
 use std::error::Error as StdError;
 use std::fmt;
-use std::io::Error as IoError;
+use std::io::{self, Error as IoError};
 
 use bincode::Error as BincodeError;
 use bulletproofs::r1cs::R1CSError;
@@ -24,6 +24,18 @@ pub enum Error {
     R1CS(R1CSError),
     Tlv(TlvError),
     UnexpectedEof,
+}
+
+impl Error {
+    pub fn io_unexpected_eof<S: ToString>(description: S) -> Self {
+        let description = description.to_string();
+        Error::Io(io::Error::new(io::ErrorKind::UnexpectedEof, description))
+    }
+
+    pub fn io_invalid_data<S: ToString>(description: S) -> Self {
+        let description = description.to_string();
+        Error::Io(io::Error::new(io::ErrorKind::InvalidData, description))
+    }
 }
 
 impl fmt::Display for Error {

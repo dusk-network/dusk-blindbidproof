@@ -1,5 +1,7 @@
 #[macro_use]
 extern crate lazy_static;
+#[macro_use]
+extern crate log;
 
 pub use blindbid::{Proof, Verify};
 pub use error::Error;

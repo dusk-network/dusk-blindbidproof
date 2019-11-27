@@ -2,7 +2,7 @@ use super::{generate_cs_transcript, CONSTANTS};
 use crate::gadgets::proof_gadget;
 use crate::Error;
 
-use std::convert::TryInto;
+use std::convert::{TryFrom, TryInto};
 use std::io::{Read, Write};
 
 use bulletproofs::r1cs::Prover;
@@ -13,7 +13,7 @@ use dusk_tlv::{TlvReader, TlvWriter};
 use rand::thread_rng;
 use serde::Deserialize;
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct Proof {
     pub proof: R1CSProof,
     pub commitments: Vec<CompressedRistretto>,
@@ -106,7 +106,17 @@ impl Proof {
 
         let mut pub_list = vec![];
         for bytes in reader.read_list::<Vec<u8>>()? {
-            pub_list.push(bincode::deserialize::<Scalar>(bytes.as_slice())?);
+            if bytes.len() != 32 {
+                return Err(Error::io_invalid_data(
+                    "Scalars Ristrettos can only be created from 32 bytes slices",
+                ));
+            }
+
+            let mut p = [0x00u8; 32];
+            p.copy_from_slice(bytes.as_slice());
+
+            let p = Scalar::from_bits(p);
+            pub_list.push(p);
         }
 
         let toggle = Deserialize::deserialize(&mut reader)?;
@@ -139,5 +149,46 @@ impl TryInto<Vec<u8>> for Proof {
         )?;
 
         Ok(buf.into_inner())
+    }
+}
+
+impl TryFrom<Vec<u8>> for Proof {
+    type Error = Error;
+
+    fn try_from(bytes: Vec<u8>) -> Result<Self, Self::Error> {
+        let mut reader = TlvReader::new(bytes.as_slice());
+
+        let proof = reader
+            .next()
+            .ok_or(Error::io_unexpected_eof("The proof was not supplied"))??;
+        let proof = R1CSProof::from_bytes(proof.as_slice())?;
+
+        let mut commitments = vec![];
+        for c in reader.read_list::<Vec<u8>>()? {
+            if c.len() != 32 {
+                return Err(Error::io_invalid_data(
+                    "Compressed Ristrettos can only be created from 32 bytes slices",
+                ));
+            }
+
+            // This function panics if the size is different from 32
+            let cr = CompressedRistretto::from_slice(c.as_slice());
+            commitments.push(cr);
+        }
+
+        let mut t_c = vec![];
+        for t in reader.read_list::<Vec<u8>>()? {
+            if t.len() != 32 {
+                return Err(Error::io_invalid_data(
+                    "Compressed Ristrettos can only be created from 32 bytes slices",
+                ));
+            }
+
+            // This function panics if the size is different from 32
+            let cr = CompressedRistretto::from_slice(t.as_slice());
+            t_c.push(cr);
+        }
+
+        Ok(Proof::new(proof, commitments, t_c))
     }
 }

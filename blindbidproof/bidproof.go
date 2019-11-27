@@ -6,16 +6,17 @@
 //
 // A concrete implementation of the Blind Bid can be found here:
 // https://gitlab.dusk.network/dusk-core/blindbidproof
-package zkproof
+package blindbidproof
 
 import (
-	"bufio"
+	"bytes"
+    "encoding/binary"
+    "errors"
 	"math/rand"
-	"os"
-	"path/filepath"
 	"time"
 
 	ristretto "github.com/bwesterb/go-ristretto"
+    "github.com/dusk-network/dusk-tlv/dusk-go-tlv"
 )
 
 // ZkProof holds all of the returned values from a generated proof.
@@ -23,7 +24,7 @@ type ZkProof struct {
 	Proof         []byte
 	Score         []byte
 	Z             []byte
-	BinaryBidList []byte
+	BinaryBidList [][]byte
 }
 
 // The number of rounds or each mimc hash
@@ -32,84 +33,130 @@ const mimcRounds = 90
 // constants used in MIMC
 var constants = genConstants()
 
-// Creates a new `NamedPipe` using a blocking FIFO named "pipe-channel" in the
-// OS' temporary folder
-var pipe = NewNamedPipe(tempFilePath("pipe-channel"))
+// genConstants will generate the constants for MIMC rounds.
+// The `seed` is the same used by the Blind Bid concrete implementation, in
+// order to have matching constants.
+func genConstants() []ristretto.Scalar {
+	constants := make([]ristretto.Scalar, mimcRounds)
+	var seed = []byte("blind bid")
+	for i := 0; i < len(constants); i++ {
+		c := ristretto.Scalar{}
+		c.Derive(seed)
+		constants[i] = c
+		seed = c.Bytes()
+	}
+
+	return constants
+}
 
 // Prove creates a zkproof using `d`, `k`, `seed` and `pubList`, and returns
 // a ZkProof data type.
-func Prove(d, k, seed ristretto.Scalar, bidList []ristretto.Scalar) ZkProof {
+func Prove(d, k, seed ristretto.Scalar, bidList []ristretto.Scalar) (*ZkProof, error) {
 	// generate intermediate values
 	q, x, y, yInv, z := prog(d, k, seed)
 
 	// shuffle x in slice
 	bidList, i := shuffle(x, bidList)
 
-	bL := make([]byte, 0, 32*len(bidList))
+	bL := make([][]byte, 0, len(bidList))
 	for i := 0; i < len(bidList); i++ {
-		bL = append(bL, bidList[i].Bytes()...)
+		bL = append(bL, bidList[i].Bytes())
 	}
 
-	// Since the named pipe is blocking, we need a buffered writer
-	bufferedPipeWriter := bufio.NewWriter(&pipe)
-	bw := NewBinWriter(bufferedPipeWriter)
+    toggleBuf := make([]byte, 8)
+    binary.LittleEndian.PutUint64(toggleBuf, uint64(i))
+
+    // create the tlv buffer
+	buf := bytes.NewBuffer([]byte{})
+	bufTlv := tlv.NewWriter(buf)
+
 	// set opcode
-	bw.Write(uint8(1)) // Prove
+	buf.Write([]byte{0x01}) // Prove
+
 	// set payload
-	bw.VarWrite(d.Bytes())
-	bw.VarWrite(k.Bytes())
-	bw.VarWrite(y.Bytes())
-	bw.VarWrite(yInv.Bytes())
-	bw.VarWrite(q.Bytes())
-	bw.VarWrite(z.Bytes())
-	bw.VarWrite(seed.Bytes())
-	bw.VarWrite(bL)
-	bw.Write(uint8(i))
+	bufTlv.Write(d.Bytes())
+	bufTlv.Write(k.Bytes())
+	bufTlv.Write(y.Bytes())
+	bufTlv.Write(yInv.Bytes())
+	bufTlv.Write(q.Bytes())
+	bufTlv.Write(z.Bytes())
+	bufTlv.Write(seed.Bytes())
+	bufTlv.WriteList(bL)
+	bufTlv.Write(toggleBuf)
 
-	// write to pipe
-	if err := bufferedPipeWriter.Flush(); err != nil {
-		panic(err)
-	}
-
-	// read the result from the pipe
-	bytes, err := pipe.ReadAll()
+	// Prepare the socket
+	socket, err := createSocket("")
 	if err != nil {
-		panic(err)
+        return nil, err
+	}
+	defer socket.Close()
+
+	// Send the buffered data to the socket
+	bs := tlv.NewWriter(socket)
+    _, err = bs.Write(buf.Bytes())
+	if err != nil {
+        return nil, err
 	}
 
-	return ZkProof{
-		Proof:         bytes,
+	// Read the reply
+	reply, err := tlv.ReaderToBytes(socket)
+	if err != nil {
+        return nil, err
+	}
+
+    zk := ZkProof{
+		Proof:         reply,
 		Score:         q.Bytes(),
 		Z:             z.Bytes(),
 		BinaryBidList: bL,
 	}
+
+	return &zk, nil
 }
 
 // Verify a ZkProof using the provided seed.
 // Returns `true` or `false` depending on whether it is successful.
-func (proof *ZkProof) Verify(seed ristretto.Scalar) bool {
-	bufferedPipeWriter := bufio.NewWriter(&pipe)
-	bw := NewBinWriter(bufferedPipeWriter)
+func (proof *ZkProof) Verify(seed ristretto.Scalar) (bool, error) {
+    // create the tlv buffer
+	buf := bytes.NewBuffer([]byte{})
+	bufTlv := tlv.NewWriter(buf)
+
 	// set opcode
-	bw.Write(uint8(2)) // Verify
+	buf.Write([]byte{0x02}) // Verify
+
 	// set payload
-	bw.VarWrite(proof.Proof)
-	bw.VarWrite(seed.Bytes())
-	bw.VarWrite(proof.BinaryBidList)
-	bw.VarWrite(proof.Score)
-	bw.VarWrite(proof.Z)
+	bufTlv.Write(proof.Proof)
+	bufTlv.Write(proof.Score)
+	bufTlv.Write(proof.Z)
+	bufTlv.Write(seed.Bytes())
+	bufTlv.WriteList(proof.BinaryBidList)
 
-	// write to pipeline
-	if err := bufferedPipeWriter.Flush(); err != nil {
-		panic(err)
-	}
-
-	bytes, err := pipe.ReadAll()
+	// Prepare the socket
+	socket, err := createSocket("")
 	if err != nil {
-		panic(err)
+        return false, err
+	}
+	defer socket.Close()
+
+	// Send the buffered data to the socket
+	bs := tlv.NewWriter(socket)
+    _, err = bs.Write(buf.Bytes())
+	if err != nil {
+        return false, err
 	}
 
-	return bytes[0] == 1
+	// Read the reply
+	reply, err := tlv.ReaderToBytes(socket)
+	if err != nil {
+        return false, err
+	}
+
+    // Sanity check for the reply
+    if len(reply) != 1 {
+        return false, errors.New("The blindbid reply is not consistent")
+    }
+
+	return reply[0] == 1, nil
 }
 
 // CalculateX calculates the blind bid `X`.
@@ -148,22 +195,6 @@ func shuffle(x ristretto.Scalar, vals []ristretto.Scalar) (
 		}
 	}
 	return ret, index
-}
-
-// genConstants will generate the constants for MIMC rounds.
-// The `seed` is the same used by the Blind Bid concrete implementation, in
-// order to have matching constants.
-func genConstants() []ristretto.Scalar {
-	constants := make([]ristretto.Scalar, mimcRounds)
-	var seed = []byte("blind bid")
-	for i := 0; i < len(constants); i++ {
-		c := ristretto.Scalar{}
-		c.Derive(seed)
-		constants[i] = c
-		seed = c.Bytes()
-	}
-
-	return constants
 }
 
 func prog(d, k, seed ristretto.Scalar) (
@@ -222,10 +253,6 @@ func mimcHash(left, right ristretto.Scalar) ristretto.Scalar {
 
 	return x
 
-}
-
-func tempFilePath(name string) string {
-	return filepath.Join(os.TempDir(), name)
 }
 
 func unique(s []ristretto.Scalar) []ristretto.Scalar {
