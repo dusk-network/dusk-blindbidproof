@@ -18,6 +18,7 @@ env_logger = "0.7"
 serde = { version = "1.0", features = ["derive"] }
 dusk-uds = "0.2"
 dusk-tlv = { git = "https://github.com/dusk-network/dusk-tlv" }
+clap = "2.33"
 
 [dependencies.bulletproofs]
 git = "https://github.com/dalek-cryptography/bulletproofs"
