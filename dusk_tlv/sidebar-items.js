@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["Error","Standard error for the interface"]],"struct":[["TlvReader","Optionally consumes an implementation of [`Read`], and fetch n payloads in TLV format from it."],["TlvWriter","Optionally consumes an implementation of [`io::Write`], and provides an adapter to convert slices of bytes to TLV format, and output the result to the writer."]]});

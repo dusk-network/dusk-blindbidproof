@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["Message","Output of the future"],["Task","Queable tasks"]],"struct":[["Options","Set of options to define the behavior of the UDS listener"],["UnixDomainSocket","Boilerplate for [`UnixListener`]."]],"trait":[["TaskProvider","Future provider to the UDS implementation"]]});

@@ -1,0 +1,68 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="API documentation for the Rust `dusk_tlv` crate."><meta name="keywords" content="rust, rustlang, rust-lang, dusk_tlv"><title>dusk_tlv - Rust</title><link rel="stylesheet" type="text/css" href="../normalize.css"><link rel="stylesheet" type="text/css" href="../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../dark.css"><link rel="stylesheet" type="text/css" href="../light.css" id="themeStyle"><script src="../storage.js"></script><noscript><link rel="stylesheet" href="../noscript.css"></noscript><link rel="shortcut icon" href="../favicon.ico"><style type="text/css">#crate-search{background-image:url("../down-arrow.svg");}</style></head><body class="rustdoc mod"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu">&#9776;</div><a href='../dusk_tlv/index.html'><div class='logo-container'><img src='../rust-logo.png' alt='logo'></div></a><p class='location'>Crate dusk_tlv</p><div class="sidebar-elems"><a id='all-types' href='all.html'><p>See all dusk_tlv's items</p></a><div class="block items"><ul><li><a href="#structs">Structs</a></li><li><a href="#enums">Enums</a></li></ul></div><p class='location'></p><script>window.sidebarCurrent = {name: 'dusk_tlv', ty: 'mod', relpath: '../'};</script></div></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!"><img src="../brush.svg" width="18" alt="Pick another theme!"></button><div id="theme-choices"></div></div><script src="../theme.js"></script><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" disabled autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><a id="settings-menu" href="../settings.html"><img src="../wheel.svg" width="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><h1 class='fqn'><span class='out-of-band'><span id='render-detail'><a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">[<span class='inner'>&#x2212;</span>]</a></span><a class='srclink' href='../src/dusk_tlv/lib.rs.html#1-11' title='goto source code'>[src]</a></span><span class='in-band'>Crate <a class="mod" href=''>dusk_tlv</a></span></h1><div class='docblock'><h1 id="dusk-tlv" class="section-header"><a href="#dusk-tlv">Dusk TLV</a></h1>
+<p>Rust implementation for TLV encoding scheme.</p>
+<h2 id="structure" class="section-header"><a href="#structure">Structure</a></h2>
+<ol>
+<li>Type</li>
+</ol>
+<ul>
+<li>Length: Fixed, 1 byte</li>
+<li>Contents: 0xf<code>x</code>, where <code>x</code> is the amount of bytes that will compose the length</li>
+</ul>
+<ol start="2">
+<li>Length</li>
+</ol>
+<ul>
+<li>Length: Variable, defined by <code>1) Type</code></li>
+<li>Contents: Little-endian order amount of bytes that defines the value length</li>
+</ul>
+<ol start="3">
+<li>Value</li>
+</ol>
+<ul>
+<li>Length: Variable, define by <code>2) Length</code></li>
+<li>Contents: Slice of bytes of fixed size</li>
+</ul>
+<h2 id="example" class="section-header"><a href="#example">Example</a></h2>
+<div class="example-wrap"><pre class="rust rust-example-rendered">
+<span class="kw">use</span> <span class="ident">dusk_tlv</span>::{<span class="ident">TlvReader</span>, <span class="ident">TlvWriter</span>};
+<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">io</span>::<span class="ident">Write</span>;
+
+<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">writer</span> <span class="op">=</span> <span class="ident">TlvWriter</span>::<span class="ident">new</span>(<span class="macro">vec</span><span class="macro">!</span>[]);
+<span class="ident">writer</span>.<span class="ident">write</span>(<span class="string">b&quot;Hello World!&quot;</span>).<span class="ident">unwrap</span>();
+<span class="ident">writer</span>.<span class="ident">write</span>(<span class="string">b&quot;Foo&quot;</span>).<span class="ident">unwrap</span>();
+<span class="ident">writer</span>.<span class="ident">write</span>(<span class="string">b&quot;Bar&quot;</span>).<span class="ident">unwrap</span>();
+
+<span class="kw">let</span> <span class="ident">v</span> <span class="op">=</span> <span class="ident">writer</span>.<span class="ident">into_inner</span>();
+
+<span class="kw">let</span> <span class="ident">tlv_hello_world</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">v</span>[<span class="number">0</span>..<span class="number">14</span>];
+<span class="kw">let</span> <span class="ident">tlv_foo</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">v</span>[<span class="number">14</span>..<span class="number">19</span>];
+<span class="kw">let</span> <span class="ident">tlv_bar</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">v</span>[<span class="number">19</span>..<span class="number">24</span>];
+
+<span class="comment">// Type 0xf1, for the length is 1 byte</span>
+<span class="macro">assert_eq</span><span class="macro">!</span>(<span class="number">0xf1</span>, <span class="ident">tlv_hello_world</span>[<span class="number">0</span>]);
+<span class="comment">// Length 0x0c, for the payload is 12 bytes</span>
+<span class="macro">assert_eq</span><span class="macro">!</span>(<span class="number">0x0c</span>, <span class="ident">tlv_hello_world</span>[<span class="number">1</span>]);
+<span class="comment">// Payload</span>
+<span class="macro">assert_eq</span><span class="macro">!</span>(<span class="string">b&quot;Hello World!&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">tlv_hello_world</span>[<span class="number">2</span>..]);
+
+<span class="macro">assert_eq</span><span class="macro">!</span>(<span class="number">0xf1</span>, <span class="ident">tlv_foo</span>[<span class="number">0</span>]);
+<span class="macro">assert_eq</span><span class="macro">!</span>(<span class="number">0x03</span>, <span class="ident">tlv_foo</span>[<span class="number">1</span>]);
+<span class="macro">assert_eq</span><span class="macro">!</span>(<span class="string">b&quot;Foo&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">tlv_foo</span>[<span class="number">2</span>..]);
+
+<span class="macro">assert_eq</span><span class="macro">!</span>(<span class="number">0xf1</span>, <span class="ident">tlv_bar</span>[<span class="number">0</span>]);
+<span class="macro">assert_eq</span><span class="macro">!</span>(<span class="number">0x03</span>, <span class="ident">tlv_bar</span>[<span class="number">1</span>]);
+<span class="macro">assert_eq</span><span class="macro">!</span>(<span class="string">b&quot;Bar&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">tlv_bar</span>[<span class="number">2</span>..]);
+
+<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">s</span> <span class="op">=</span> <span class="ident">v</span>.<span class="ident">as_slice</span>();
+<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">reader</span> <span class="op">=</span> <span class="ident">TlvReader</span>::<span class="ident">new</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">s</span>);
+<span class="macro">assert_eq</span><span class="macro">!</span>(<span class="string">b&quot;Hello World!&quot;</span>, <span class="ident">reader</span>.<span class="ident">next</span>().<span class="ident">unwrap</span>().<span class="ident">unwrap</span>().<span class="ident">as_slice</span>());
+<span class="macro">assert_eq</span><span class="macro">!</span>(<span class="string">b&quot;Foo&quot;</span>, <span class="ident">reader</span>.<span class="ident">next</span>().<span class="ident">unwrap</span>().<span class="ident">unwrap</span>().<span class="ident">as_slice</span>());
+<span class="macro">assert_eq</span><span class="macro">!</span>(<span class="string">b&quot;Bar&quot;</span>, <span class="ident">reader</span>.<span class="ident">next</span>().<span class="ident">unwrap</span>().<span class="ident">unwrap</span>().<span class="ident">as_slice</span>());
+<span class="macro">assert</span><span class="macro">!</span>(<span class="ident">reader</span>.<span class="ident">next</span>().<span class="ident">is_none</span>());</pre></div>
+</div><h2 id='structs' class='section-header'><a href="#structs">Structs</a></h2>
+<table><tr class='module-item'><td><a class="struct" href="struct.TlvReader.html" title='dusk_tlv::TlvReader struct'>TlvReader</a></td><td class='docblock-short'><p>Optionally consumes an implementation of <a href="https://doc.rust-lang.org/nightly/std/io/trait.Read.html" title="`Read`"><code>Read</code></a>, and fetch n payloads in TLV format from it.</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.TlvWriter.html" title='dusk_tlv::TlvWriter struct'>TlvWriter</a></td><td class='docblock-short'><p>Optionally consumes an implementation of <a href="https://doc.rust-lang.org/nightly/std/io/trait.Write.html" title="`io::Write`"><code>io::Write</code></a>, and provides an adapter to convert
+slices of bytes to TLV format, and output the result to the writer.</p>
+</td></tr></table><h2 id='enums' class='section-header'><a href="#enums">Enums</a></h2>
+<table><tr class='module-item'><td><a class="enum" href="enum.Error.html" title='dusk_tlv::Error enum'>Error</a></td><td class='docblock-short'><p>Standard error for the interface</p>
+</td></tr></table></section><section id="search" class="content hidden"></section><section class="footer"></section><script>window.rootPath = "../";window.currentCrate = "dusk_tlv";</script><script src="../aliases.js"></script><script src="../main.js"></script><script defer src="../search-index.js"></script></body></html>

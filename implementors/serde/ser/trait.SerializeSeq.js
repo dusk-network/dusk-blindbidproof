@@ -1,4 +1,5 @@
 (function() {var implementors = {};
+implementors["dusk_tlv"] = [{text:"impl&lt;'a, '_, W&gt; <a class=\"trait\" href=\"serde/ser/trait.SerializeSeq.html\" title=\"trait serde::ser::SerializeSeq\">SerializeSeq</a> for &amp;'_ mut <a class=\"struct\" href=\"dusk_tlv/struct.TlvWriter.html\" title=\"struct dusk_tlv::TlvWriter\">TlvWriter</a>&lt;W&gt; <span class=\"where fmt-newline\">where<br>&nbsp;&nbsp;&nbsp;&nbsp;W: <a class=\"trait\" href=\"https://doc.rust-lang.org/nightly/std/io/trait.Write.html\" title=\"trait std::io::Write\">Write</a>,&nbsp;</span>",synthetic:false,types:["dusk_tlv::writer::TlvWriter"]},];
 implementors["serde"] = [];
 
             if (window.register_implementors) {
