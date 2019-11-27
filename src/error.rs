@@ -2,7 +2,6 @@ use std::error::Error as StdError;
 use std::fmt;
 use std::io::{self, Error as IoError};
 
-use bincode::Error as BincodeError;
 use bulletproofs::r1cs::R1CSError;
 use dusk_tlv::Error as TlvError;
 
@@ -18,7 +17,6 @@ macro_rules! from_error {
 
 #[derive(Debug)]
 pub enum Error {
-    Bincode(BincodeError),
     Io(IoError),
     Other(String),
     R1CS(R1CSError),
@@ -41,7 +39,6 @@ impl Error {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Error::Bincode(e) => write!(f, "{}", e),
             Error::Io(e) => write!(f, "{}", e),
             Error::Other(s) => write!(f, "{}", s),
             Error::R1CS(e) => write!(f, "{}", e),
@@ -54,7 +51,6 @@ impl fmt::Display for Error {
 impl StdError for Error {
     fn source(&self) -> Option<&(dyn StdError + 'static)> {
         match self {
-            Error::Bincode(e) => Some(e),
             Error::Io(e) => Some(e),
             Error::Tlv(e) => Some(e),
             _ => None,
@@ -62,7 +58,6 @@ impl StdError for Error {
     }
 }
 
-from_error!(BincodeError, Bincode);
 from_error!(IoError, Io);
 from_error!(R1CSError, R1CS);
 from_error!(TlvError, Tlv);

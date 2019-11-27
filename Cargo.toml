@@ -13,11 +13,9 @@ rand = "0.6"
 curve25519-dalek = { version = "1.0", features = ["serde", "avx2_backend"] }
 lazy_static = "1.4"
 sha2 = "0.8"
-chrono = "0.4"
 log = "0.4"
 env_logger = "0.7"
 serde = { version = "1.0", features = ["derive"] }
-bincode = "1.2"
 dusk-uds = "0.2"
 dusk-tlv = { git = "https://github.com/dusk-network/dusk-tlv" }
 
