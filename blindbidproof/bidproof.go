@@ -10,13 +10,13 @@ package blindbidproof
 
 import (
 	"bytes"
-    "encoding/binary"
-    "errors"
+	"encoding/binary"
+	"errors"
 	"math/rand"
 	"time"
 
 	ristretto "github.com/bwesterb/go-ristretto"
-    "github.com/dusk-network/dusk-tlv/dusk-go-tlv"
+	"github.com/dusk-network/dusk-tlv/dusk-go-tlv"
 )
 
 // ZkProof holds all of the returned values from a generated proof.
@@ -63,10 +63,10 @@ func Prove(d, k, seed ristretto.Scalar, bidList []ristretto.Scalar) (*ZkProof, e
 		bL = append(bL, bidList[i].Bytes())
 	}
 
-    toggleBuf := make([]byte, 8)
-    binary.LittleEndian.PutUint64(toggleBuf, uint64(i))
+	toggleBuf := make([]byte, 8)
+	binary.LittleEndian.PutUint64(toggleBuf, uint64(i))
 
-    // create the tlv buffer
+	// create the tlv buffer
 	buf := bytes.NewBuffer([]byte{})
 	bufTlv := tlv.NewWriter(buf)
 
@@ -87,24 +87,24 @@ func Prove(d, k, seed ristretto.Scalar, bidList []ristretto.Scalar) (*ZkProof, e
 	// Prepare the socket
 	socket, err := createSocket("")
 	if err != nil {
-        return nil, err
+		return nil, err
 	}
 	defer socket.Close()
 
 	// Send the buffered data to the socket
 	bs := tlv.NewWriter(socket)
-    _, err = bs.Write(buf.Bytes())
+	_, err = bs.Write(buf.Bytes())
 	if err != nil {
-        return nil, err
+		return nil, err
 	}
 
 	// Read the reply
 	reply, err := tlv.ReaderToBytes(socket)
 	if err != nil {
-        return nil, err
+		return nil, err
 	}
 
-    zk := ZkProof{
+	zk := ZkProof{
 		Proof:         reply,
 		Score:         q.Bytes(),
 		Z:             z.Bytes(),
@@ -117,7 +117,7 @@ func Prove(d, k, seed ristretto.Scalar, bidList []ristretto.Scalar) (*ZkProof, e
 // Verify a ZkProof using the provided seed.
 // Returns `true` or `false` depending on whether it is successful.
 func (proof *ZkProof) Verify(seed ristretto.Scalar) (bool, error) {
-    // create the tlv buffer
+	// create the tlv buffer
 	buf := bytes.NewBuffer([]byte{})
 	bufTlv := tlv.NewWriter(buf)
 
@@ -134,27 +134,27 @@ func (proof *ZkProof) Verify(seed ristretto.Scalar) (bool, error) {
 	// Prepare the socket
 	socket, err := createSocket("")
 	if err != nil {
-        return false, err
+		return false, err
 	}
 	defer socket.Close()
 
 	// Send the buffered data to the socket
 	bs := tlv.NewWriter(socket)
-    _, err = bs.Write(buf.Bytes())
+	_, err = bs.Write(buf.Bytes())
 	if err != nil {
-        return false, err
+		return false, err
 	}
 
 	// Read the reply
 	reply, err := tlv.ReaderToBytes(socket)
 	if err != nil {
-        return false, err
+		return false, err
 	}
 
-    // Sanity check for the reply
-    if len(reply) != 1 {
-        return false, errors.New("The blindbid reply is not consistent")
-    }
+	// Sanity check for the reply
+	if len(reply) != 1 {
+		return false, errors.New("The blindbid reply is not consistent")
+	}
 
 	return reply[0] == 1, nil
 }
