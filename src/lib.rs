@@ -3,7 +3,7 @@ extern crate lazy_static;
 #[macro_use]
 extern crate log;
 
-pub use blindbid::{Proof, Verify};
+pub use blindbid::{Bid, Proof, Verify};
 pub use error::Error;
 pub use futures::MainFuture;
 

@@ -23,9 +23,11 @@ lazy_static! {
     };
 }
 
+pub use bid::Bid;
 pub use proof::Proof;
 pub use verify::Verify;
 
+mod bid;
 mod proof;
 mod verify;
 

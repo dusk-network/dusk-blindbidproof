@@ -1,4 +1,4 @@
-use super::{generate_cs_transcript, CONSTANTS};
+use super::{generate_cs_transcript, Bid, CONSTANTS};
 use crate::gadgets::proof_gadget;
 use crate::Error;
 
@@ -41,7 +41,7 @@ impl Proof {
         q: Scalar,
         z_img: Scalar,
         seed: Scalar,
-        pub_list: Vec<Scalar>,
+        pub_list: Vec<Bid>,
         toggle: u64,
     ) -> Result<Self, Error> {
         let (pc_gens, bp_gens, mut transcript) = generate_cs_transcript();
@@ -67,7 +67,8 @@ impl Proof {
             .unzip();
 
         // public list of numbers
-        let l_v: Vec<LinearCombination> = pub_list.iter().map(|&x| x.into()).collect::<Vec<_>>();
+        let l_v: Vec<LinearCombination> =
+            pub_list.iter().map(|bid| bid.x.into()).collect::<Vec<_>>();
 
         // 3. Build a CS
         proof_gadget(
@@ -104,21 +105,10 @@ impl Proof {
         let z_img = Deserialize::deserialize(&mut reader)?;
         let seed = Deserialize::deserialize(&mut reader)?;
 
-        let mut pub_list = vec![];
-        for bytes in reader.read_list::<Vec<u8>>()? {
-            if bytes.len() != 32 {
-                return Err(Error::io_invalid_data(
-                    "Scalars Ristrettos can only be created from 32 bytes slices",
-                ));
-            }
+        let mut reader = reader.into_inner();
+        let pub_list = Bid::try_list_from_reader(&mut reader)?;
 
-            let mut p = [0x00u8; 32];
-            p.copy_from_slice(bytes.as_slice());
-
-            let p = Scalar::from_bits(p);
-            pub_list.push(p);
-        }
-
+        let mut reader = TlvReader::new(reader);
         let toggle = Deserialize::deserialize(&mut reader)?;
 
         Proof::prove(d, k, y, y_inv, q, z_img, seed, pub_list, toggle)
